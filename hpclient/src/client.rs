@@ -27,14 +27,20 @@ py_class!(class Client |py| {
     }
 
     def connect(&self) -> PyResult<i32> {
-        self.client(py).connect().unwrap();
+        let client = self.client(py);
+        py.allow_threads(|| {
+            client.connect().unwrap();
+        });
 
         Ok(0)
     }
 
     def connect_to(&self, address: &str) -> PyResult<i32> {
-        self.client(py).connect_to(address).unwrap();
-
+        let client = self.client(py);
+        py.allow_threads(|| {
+            client.connect_to(address).unwrap();
+        });
+        
         Ok(0)
     }
 

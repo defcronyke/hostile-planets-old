@@ -5,10 +5,10 @@ from threading import Thread
 # Instantiate a new Server.
 s = hpserver.Server("serverconf.toml")
 
-# Listen on the address that is in the conf.toml file.
+# Listen in the background on the address that is in the conf.toml file.
 Thread(target=s.listen, daemon=True).start()
 
-# Listen on the address specified by the first argument.
+# Listen in the background on the address specified by the first argument.
 # Thread(target=s.listen_to, args=("127.0.0.1:8080",), daemon=True).start()
 
 # Print the server configuration.
@@ -41,11 +41,11 @@ c = hpclient.Client("clientconf.toml")
 print("client conf:")
 print(c.get_conf())
 
-# Connect to the server listed in the clientconf.toml file.
-c.connect()
+# Connect in the background to the server listed in the clientconf.toml file.
+Thread(target=c.connect, daemon=True).start()
 
-# Connect to a server with the address given by the first argument.
-# c.connect_to("127.0.0.1:8080")
+# Connect in the background to a server with the address given by the first argument.
+# Thread(target=c.connect_to, args=("127.0.0.1:8080",), daemon=True).start()
 
 # Print the contents of the Client instance.
 print("client contents:")
