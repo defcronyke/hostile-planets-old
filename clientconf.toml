@@ -1,12 +1,3 @@
-# [server]
-# ip = "127.0.0.1"  # allow connections from only this computer
-# # ip = "0.0.0.0"  # allow connections from LAN or internet
-# port = 8080
-
-# [[server.maps]]
-# name = "start"
-# script = "maps/000001-start.py"
-
 [client]
 ip = "127.0.0.1"  # address of server to connect to
 port = 8080

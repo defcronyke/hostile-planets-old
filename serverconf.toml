@@ -1,5 +1,5 @@
 [server]
-ip = "127.0.0.1"  # allow connections from only this computer
+ip = "127.0.0.1"  # allow connections from only your computer
 # ip = "0.0.0.0"  # allow connections from LAN or internet
 port = 8080
 
