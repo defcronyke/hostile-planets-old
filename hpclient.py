@@ -1,3 +1,5 @@
+# Run this script to launch a client and try to connect to a remote 
+# server defined in the clientconf.toml config file.
 import hpclient
 from threading import Thread
 

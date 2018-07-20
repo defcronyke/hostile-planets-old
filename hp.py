@@ -1,3 +1,4 @@
+# Run this script to launch both a local server and a client which will connect to it.
 import hpserver
 import hpclient
 from threading import Thread

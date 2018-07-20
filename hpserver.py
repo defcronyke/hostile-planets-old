@@ -1,3 +1,5 @@
+# Run this script to launch a server. You can specify if it should
+# accept remote connections or not in the serverconf.toml config file.
 import hpserver
 
 # Instantiate a new Server.
