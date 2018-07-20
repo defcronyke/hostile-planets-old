@@ -187,17 +187,7 @@ impl _Server {
         {
             let data = self.data.read().unwrap();
             let players = data.players.clone();
-            // let player = players.get(&key).unwrap().clone();
             let player = players.get(&key);
-            
-            // let player = match players.get(&key) {
-            //     Some(player) => {
-            //         Some(player)
-            //     },
-            //     None => {
-            //         None
-            //     },
-            // };
 
             let con = self.data.read().unwrap().cons.get(&key).unwrap().as_ref().unwrap().try_clone().unwrap();
             println!("client connected: {:?} : {:?}", player, con);

@@ -54,20 +54,3 @@ impl ToPyObject for ServerConfMap {
         dict
     }
 }
-
-// #[derive(Deserialize, Debug)]
-// pub struct ClientConf {
-//     pub client: ClientConfClient,
-// }
-
-// #[derive(Deserialize, Debug)]
-// pub struct ClientConfClient {
-//     pub ip: String,
-//     pub port: u32,
-//     pub players: Vec<ClientConfPlayer>,
-// }
-
-// #[derive(Deserialize, Debug)]
-// pub struct ClientConfPlayer {
-//     pub name: String,
-// }
