@@ -10,5 +10,9 @@ Thread(target=c.connect, daemon=True).start()
 # Connect in the background to a server with the address given by the first argument.
 # Thread(target=c.connect_to, args=("127.0.0.1:8080",), daemon=True).start()
 
+# Print the contents of the Server instance.
+print("client contents:")
+print(dir(c))
+
 # Start the client's main loop.
 c.run()

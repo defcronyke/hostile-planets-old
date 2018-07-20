@@ -11,6 +11,10 @@ Thread(target=s.listen, daemon=True).start()
 # Listen in the background on the address specified by the first argument.
 # Thread(target=s.listen_to, args=("127.0.0.1:8080",), daemon=True).start()
 
+# Print the contents of the Server instance.
+print("server contents:")
+print(dir(s))
+
 # Print the server configuration.
 print("server conf:")
 print(s.get_conf())
@@ -30,16 +34,8 @@ print("is " + player + " connected? " + str(s.is_connected(player)))
 player = "Henry"
 print("is " + player + " connected? " + str(s.is_connected(player)))
 
-# Print the contents of the Server instance.
-print("server contents:")
-print(dir(s))
-
 # Instantiate a new Client.
 c = hpclient.Client("clientconf.toml")
-
-# Print the client configuration.
-print("client conf:")
-print(c.get_conf())
 
 # Connect in the background to the server listed in the clientconf.toml file.
 Thread(target=c.connect, daemon=True).start()
@@ -50,6 +46,10 @@ Thread(target=c.connect, daemon=True).start()
 # Print the contents of the Client instance.
 print("client contents:")
 print(dir(c))
+
+# Print the client configuration.
+print("client conf:")
+print(c.get_conf())
 
 # Start the client's main loop.
 c.run()
