@@ -1,5 +1,6 @@
 [client]
-ip = "127.0.0.1"  # address of server to connect to
+ip = "127.0.0.1"  # address of local server to connect to
+# ip = "some.ip.address.here"  # address of remote server to connect to
 port = 8080
 
 [[client.players]]
