@@ -10,4 +10,8 @@ c.connect()
 # c.connect_to("127.0.0.1:8080")
 
 # Print the contents of the Client instance.
+print("client contents:")
 print(dir(c))
+
+# Start the client's main loop.
+c.run()
