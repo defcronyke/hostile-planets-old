@@ -50,3 +50,6 @@ c.connect()
 # Print the contents of the Client instance.
 print("client contents:")
 print(dir(c))
+
+# Start the client's main loop.
+c.run()

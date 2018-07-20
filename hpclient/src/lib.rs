@@ -2,12 +2,14 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate cpython;
+extern crate piston_window;
+extern crate chrono;
+extern crate timer;
+extern crate toml;
 
-pub mod client_lib;
+pub mod client;
 pub mod conf;
-// pub mod player;
-// pub mod server;
-// mod unit;
+pub mod window;
 
 // #[cfg(test)]
 // mod tests {

@@ -1,138 +1,139 @@
-extern crate hp;
-use hp::client_lib::HostilePlanetsClient;
+use conf::*;
+use window::*;
 
-extern crate chrono;
-extern crate piston_window;
-extern crate timer;
-
-// use chrono::*;
-use piston_window::*;
-use std::sync::{Arc, Mutex};
+use cpython::PyResult;
+use std::fs::File;
+use std::io;
+use std::io::{BufRead, BufReader, Read};
+use std::net::TcpStream;
 use std::{thread, time};
-// use std::time;
-// use timer::*;
+use piston_window::*;
+use toml;
 
-// extern crate graphics;
-// extern crate glutin_window;
-// extern crate opengl_graphics;
+py_module_initializer!(hpclient, inithpclient, PyInit_hpclient, |py, m| {
+    try!(m.add(py, "__doc__", "This module is implemented in Rust."));
+    try!(m.add_class::<Client>(py));
+    
+    Ok(())
+});
 
-// use piston::window::WindowSettings;
-// use piston::event_loop::*;
-// use piston::input::*;
-// use glutin_window::GlutinWindow as Window;
-// use opengl_graphics::{ GlGraphics, OpenGL };
+py_class!(class Client |py| {
+    data client: HostilePlanetsClient;
 
-// pub struct App {
-//     gl: GlGraphics, // OpenGL drawing backend.
-//     rotation: f64   // Rotation for the square.
-// }
+    def __new__(_cls, conf_path: &str) -> PyResult<Self> {
+        let c = HostilePlanetsClient::new(conf_path);
 
-// impl App {
-//     fn render(&mut self, args: &RenderArgs) {
-//         use graphics::*;
+        Self::create_instance(py, c)
+    }
 
-//         const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
-//         const RED:   [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+    def connect(&self) -> PyResult<i32> {
+        self.client(py).connect().unwrap();
 
-//         let square = rectangle::square(0.0, 0.0, 50.0);
-//         let rotation = self.rotation;
-//         let (x, y) = ((args.width / 2) as f64,
-//                       (args.height / 2) as f64);
+        Ok(0)
+    }
 
-//         self.gl.draw(args.viewport(), |c, gl| {
-//             // Clear the screen.
-//             clear(GREEN, gl);
+    def connect_to(&self, address: &str) -> PyResult<i32> {
+        self.client(py).connect_to(address).unwrap();
 
-//             let transform = c.transform.trans(x, y)
-//                                        .rot_rad(rotation)
-//                                        .trans(-25.0, -25.0);
+        Ok(0)
+    }
 
-//             // Draw a box rotating around the middle of the screen.
-//             rectangle(RED, square, transform, gl);
-//         });
-//     }
+    def get_conf(&self) -> PyResult<ClientConf> {
+        let client = self.client(py);
+        let conf = client.conf.clone();
 
-//     fn update(&mut self, args: &UpdateArgs) {
-//         // Rotate 2 radians per second.
-//         self.rotation += 2.0 * args.dt;
-//     }
-// }
+        Ok(conf)
+    }
 
-fn connect(c: &mut HostilePlanetsClient) {
-    match c.connect() {
-        Ok(stream) => {
-            c.server_con = Some(stream);
-        }
+    def run(&self) -> PyResult<i32> {
+        self.client(py).run().unwrap();
 
-        Err(e) => {
-            println!(
-                "failed connecting to server: {}, retrying in 10 seconds...",
-                e
-            );
-            thread::sleep(time::Duration::from_millis(1000 * 10));
-            connect(c);
+        Ok(0)
+    }
+});
+
+pub struct HostilePlanetsClient {
+    pub name: String,
+    pub conf: ClientConf,
+    pub server_con: Option<TcpStream>,
+}
+
+pub trait _Client {
+    // Connect to a server by address, such as: "127.0.0.1:8080"
+    fn connect_to(&self, address: &str) -> io::Result<TcpStream> {
+        // Connect to the server.
+        println!("connecting to server: {} ...", address);
+        match TcpStream::connect(address) {
+            Ok(stream) => {
+                println!("connected to server: {:?}", stream);
+
+                // Wait for the server to say hello, and print the welcome message.
+                let mut welcome_msg = String::new();
+
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                reader.read_line(&mut welcome_msg).unwrap();
+
+                print!("server msg: {}", welcome_msg);
+
+                Ok(stream)
+            },
+
+            Err(e) => {
+                println!("failed connecting to server: {:?} : retrying in 10 seconds ...", e);
+                thread::sleep(time::Duration::from_millis(1000 * 10));
+
+                self.connect_to(address)
+            },
         }
     }
 }
 
-fn main() {
-    let c = Arc::new(Mutex::new(HostilePlanetsClient::new("conf.toml")));
-    {
-        let c = c.clone();
-        thread::spawn(move || {
-            connect(&mut *c.lock().unwrap());
-        });
+impl _Client for HostilePlanetsClient {}
+
+impl HostilePlanetsClient {
+    pub fn new(conf_path: &str) -> Self {
+        let name = String::from("Hostile Planets client");
+        println!("loading {} ...", name);
+
+        let mut f = File::open(conf_path).expect("file not found");
+        let mut contents = String::new();
+        f.read_to_string(&mut contents)
+            .expect("something went wrong reading the file");
+
+        let conf: ClientConf = toml::from_str(&contents).unwrap();
+
+        println!("using config {}: {:?}", conf_path, conf);
+
+        let c = Self {
+            name: name.clone(),
+            conf: conf,
+            server_con: None,
+        };
+
+        println!("{} loaded", name);
+
+        c
     }
 
-    println!(
-        "The client is instantiated, and attempting to connect to the server: {:?}",
-        *c.lock().unwrap()
-    );
-
-    let mut window: PistonWindow = WindowSettings::new("Hello Piston!", [640, 480])
-        .exit_on_esc(true)
-        .build()
-        .unwrap();
-
-    while let Some(event) = window.next() {
-        window.draw_2d(&event, |context, graphics| {
-            clear([1.0; 4], graphics);
-            rectangle(
-                [1.0, 0.0, 0.0, 1.0], // red
-                [0.0, 0.0, 100.0, 100.0],
-                context.transform,
-                graphics,
-            );
-        });
+    // Connect to the server specified in conf.toml.
+    pub fn connect(&self) -> io::Result<TcpStream> {
+        // Connect to the server.
+        let addr = format!("{}:{}", self.conf.client.ip, self.conf.client.port);
+        self.connect_to(&addr)
     }
 
-    // // Change this to OpenGL::V2_1 if not working.
-    // let opengl = OpenGL::V3_2;
+    pub fn run(&self) -> io::Result<()> {
+        let mut w = _PistonWindow::new().window;
 
-    // // Create an Glutin window.
-    // let mut window: Window = WindowSettings::new(
-    //         "spinning-square",
-    //         [200, 200]
-    //     )
-    //     .opengl(opengl)
-    //     .exit_on_esc(true)
-    //     .build()
-    //     .unwrap();
-
-    // // Create a new game and run it.
-    // let mut app = App {
-    //     gl: GlGraphics::new(opengl),
-    //     rotation: 0.0
-    // };
-
-    // let mut events = Events::new(EventSettings::new());
-    // while let Some(e) = events.next(&mut window) {
-    //     if let Some(r) = e.render_args() {
-    //         app.render(&r);
-    //     }
-
-    //     if let Some(u) = e.update_args() {
-    //         app.update(&u);
-    //     }
-    // }
+        while let Some(e) = w.next() {
+            w.draw_2d(&e, |c, g| {
+                clear([0.5, 0.5, 0.5, 1.0], g);
+                rectangle([1.0, 0.0, 0.0, 1.0], // red
+                        [0.0, 0.0, 100.0, 100.0], // rectangle
+                        c.transform, g);
+            });
+        }
+        
+        Ok(())
+    }
 }
