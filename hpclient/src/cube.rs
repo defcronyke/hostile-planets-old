@@ -12,7 +12,8 @@ use shader_version::glsl::GLSL;
 use camera_controllers::{
     FirstPersonSettings,
     FirstPerson,
-    CameraPerspective
+    CameraPerspective,
+    model_view_projection
 };
 use vecmath;
 use vecmath::*;
@@ -156,6 +157,14 @@ impl Cube {
             aspect_ratio: (draw_size.width as f32) / (draw_size.height as f32)
         }.projection()
     }
+
+    pub fn reset(&mut self, w: &mut PistonWindow) -> io::Result<i32> {
+        self.projection = Self::get_projection(&w);
+        self.data.out_color = w.output_color.clone();
+        self.data.out_depth = w.output_stencil.clone();
+
+        Ok(0)
+    }
 }
 
 impl Object for Cube {
@@ -163,7 +172,13 @@ impl Object for Cube {
         self.name.clone()
     }
 
-    fn draw(&self, _pw: &mut _PistonWindow) -> io::Result<i32> {
+    fn draw(&mut self, w: &mut PistonWindow, args: &RenderArgs) -> io::Result<i32> {
+        self.data.u_model_view_proj = model_view_projection(
+            self.model,
+            self.first_person.camera(args.ext_dt).orthogonal(),
+            self.projection
+        );
+        w.encoder.draw(&self.slice, &self.pso, &self.data);
 
         Ok(0)
     }

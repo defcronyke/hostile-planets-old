@@ -1,4 +1,4 @@
-use window::*;
+use piston_window::*;
 
 use std::io;
 
@@ -7,7 +7,7 @@ pub trait Object {
     String::from("unknown")
   }
 
-  fn draw(&self, _w: &mut _PistonWindow) -> io::Result<i32> {
+  fn draw(&mut self, _w: &mut PistonWindow, _args: &RenderArgs) -> io::Result<i32> {
     Err(io::Error::from(io::ErrorKind::NotFound))
   }
 }

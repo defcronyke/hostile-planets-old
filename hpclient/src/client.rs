@@ -1,6 +1,7 @@
 use conf::*;
 use window::*;
 use cube::*;
+use object::*;
 
 use cpython::PyResult;
 use std::fs::File;
@@ -10,7 +11,6 @@ use std::net::TcpStream;
 use std::{thread, time};
 use toml;
 use piston_window::{RenderEvent, ResizeEvent};
-use camera_controllers::*;
 
 py_module_initializer!(hpclient, inithpclient, PyInit_hpclient, |py, m| {
     try!(m.add(py, "__doc__", "This module is implemented in Rust."));
@@ -140,22 +140,13 @@ impl HostilePlanetsClient {
 
             w.draw_3d(&e, |w| {
                 let args = e.render_args().unwrap();
-
                 w.encoder.clear(&w.output_color, [0.3, 0.3, 0.3, 1.0]);
                 w.encoder.clear_depth(&w.output_stencil, 1.0);
-
-                cube.data.u_model_view_proj = model_view_projection(
-                    cube.model,
-                    cube.first_person.camera(args.ext_dt).orthogonal(),
-                    cube.projection
-                );
-                w.encoder.draw(&cube.slice, &cube.pso, &cube.data);
+                cube.draw(w, &args).unwrap();
             });
 
             if let Some(_) = e.resize_args() {
-                cube.projection = Cube::get_projection(&w);
-                cube.data.out_color = w.output_color.clone();
-                cube.data.out_depth = w.output_stencil.clone();
+                cube.reset(w).unwrap();
             }
         } 
         
