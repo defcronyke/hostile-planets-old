@@ -31,6 +31,12 @@ impl GltfObject {
       aspect_ratio: (draw_size.width as f32) / (draw_size.height as f32)
     }.projection()
   }
+
+  pub fn set_projection(&mut self, w: &mut PistonWindow) -> io::Result<i32> {
+    self.projection = GltfObject::get_projection(&w);
+
+    Ok(0)
+  }
 }
 
 impl Object for GltfObject {

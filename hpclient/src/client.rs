@@ -2,7 +2,8 @@ use conf::*;
 use window::*;
 use cube::*;
 use object::*;
-use asset_loader::*;
+use gltf_object::*;
+use asset_loader;
 
 use cpython::PyResult;
 use std::fs::File;
@@ -16,6 +17,7 @@ use camera_controllers::{
   FirstPerson,
   FirstPersonSettings
 };
+use std::sync::{Arc, RwLock};
 
 py_module_initializer!(hpclient, inithpclient, PyInit_hpclient, |py, m| {
   try!(m.add(py, "__doc__", "This module is implemented in Rust."));
@@ -63,12 +65,20 @@ py_class!(class Client |py| {
 
     Ok(0)
   }
+
+  def load_gltf(&self, path: &str) -> PyResult<i32> {
+    let client = self.client(py);
+    client.objects.write().unwrap().push(asset_loader::load_gltf(path).unwrap());
+
+    Ok(0)
+  }
 });
 
 pub struct HostilePlanetsClient {
   pub name: String,
   pub conf: ClientConf,
   pub server_con: Option<TcpStream>,
+  pub objects: Arc<RwLock<Vec<GltfObject>>>,
 }
 
 pub trait _Client {
@@ -121,6 +131,7 @@ impl HostilePlanetsClient {
             name: name.clone(),
             conf: conf,
             server_con: None,
+            objects: Arc::new(RwLock::new(Vec::new())),
         };
 
         println!("{} loaded", name);
@@ -144,10 +155,6 @@ impl HostilePlanetsClient {
             [0.5, 0.5, 4.0],
             FirstPersonSettings::keyboard_wasd()
         );
-
-        let objects = vec![
-          load_gltf(w, "./hpclient/assets/biped_robot/scene.gltf").unwrap(),
-        ];
         
         while let Some(e) = w.next() {
             let mut first_person = &mut first_person;
@@ -158,16 +165,21 @@ impl HostilePlanetsClient {
                 w.encoder.clear(&w.output_color, [0.3, 0.3, 0.3, 1.0]);
                 w.encoder.clear_depth(&w.output_stencil, 1.0);
                 cube.draw(w, &args, &first_person).unwrap();
+                let objects = self.objects.write().unwrap();
 
                 for mut obj in objects.clone() {
                   match obj.draw(w, &args, &first_person) {
-                    _ => (),
+                    _ => {
+                      obj.set_projection(w).unwrap();
+                      ()
+                    },
                   }
                 }
             });
 
             if let Some(_) = e.resize_args() {
                 cube.reset(w).unwrap();
+                let objects = self.objects.write().unwrap();
 
                 for mut obj in objects.clone() {
                   match obj.reset(w) {

@@ -110,12 +110,12 @@ impl Cube {
       let glsl = ogl.to_glsl();
       let pso = f.create_pipeline_simple(
               Shaders::new()
-                  .set(GLSL::V1_20, include_str!("../assets/cube_120.glslv"))
-                  .set(GLSL::V1_50, include_str!("../assets/cube_150.glslv"))
+                  .set(GLSL::V1_20, include_str!("../assets/shaders/cube_120.glslv"))
+                  .set(GLSL::V1_50, include_str!("../assets/shaders/cube_150.glslv"))
                   .get(glsl).unwrap().as_bytes(),
               Shaders::new()
-                  .set(GLSL::V1_20, include_str!("../assets/cube_120.glslf"))
-                  .set(GLSL::V1_50, include_str!("../assets/cube_150.glslf"))
+                  .set(GLSL::V1_20, include_str!("../assets/shaders/cube_120.glslf"))
+                  .set(GLSL::V1_50, include_str!("../assets/shaders/cube_150.glslf"))
                   .get(glsl).unwrap().as_bytes(),
               pipe::new()
           ).unwrap();

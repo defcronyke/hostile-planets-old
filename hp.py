@@ -52,5 +52,8 @@ print(dir(c))
 print("client conf:")
 print(c.get_conf())
 
+# Load a 3D model that's in GLTF format.
+c.load_gltf("hpclient/assets/models/biped_robot/scene.gltf")
+
 # Start the client's main loop.
 c.run()
