@@ -1,11 +1,9 @@
 use gltf_object::*;
-use object::Object;
 
 use gltf;
 use std::{fs, io};
 use std::boxed::Box;
 use std::error::Error as StdError;
-// use vecmath;
 use vecmath::*;
 use piston_window::*;
 
@@ -17,6 +15,8 @@ pub fn load_gltf(w: &mut PistonWindow, path: &str) -> Result<GltfObject, Box<Std
 
   let model = mat4_id();
   let projection = GltfObject::get_projection(&w);
+
+  println!("loaded gltf asset: {}", path);
 
   Ok(
     GltfObject {

@@ -1,10 +1,7 @@
 use piston_window::*;
 
 use std::io;
-use camera_controllers::{
-  FirstPerson
-  // CameraPerspective
-};
+use camera_controllers::FirstPerson;
 use vecmath::*;
 
 pub trait Object {
@@ -12,7 +9,7 @@ pub trait Object {
     String::from("an unknown object")
   }
 
-  fn draw(&mut self, _w: &mut PistonWindow, _args: &RenderArgs) -> io::Result<i32> {
+  fn draw(&mut self, _w: &mut PistonWindow, _args: &RenderArgs, _first_person: &FirstPerson) -> io::Result<i32> {
     Err(io::Error::from(io::ErrorKind::NotFound))
   }
 

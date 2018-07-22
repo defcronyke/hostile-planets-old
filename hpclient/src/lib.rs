@@ -20,8 +20,8 @@ pub mod window;
 pub mod cube;
 pub mod vertex;
 pub mod object;
-pub mod asset_loader;
 pub mod gltf_object;
+pub mod asset_loader;
 
 // #[cfg(test)]
 // mod tests {
