@@ -10,7 +10,6 @@ use gfx::traits::*;
 use shader_version::Shaders;
 use shader_version::glsl::GLSL;
 use camera_controllers::{
-    FirstPersonSettings,
     FirstPerson,
     CameraPerspective,
     model_view_projection
@@ -35,7 +34,7 @@ pub struct Cube {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u16>,
     pub texels: Vec<[u8; 4]>,
-    pub first_person: FirstPerson,
+    // pub first_person: FirstPerson,
     pub model: Matrix4<f32>,
     pub projection: [[f32; 4]; 4],
     pub slice: Slice<gfx_device_gl::Resources>,
@@ -123,10 +122,10 @@ impl Cube {
 
         let model = vecmath::mat4_id();
         let projection = Self::get_projection(&w);
-        let first_person = FirstPerson::new(
-            [0.5, 0.5, 4.0],
-            FirstPersonSettings::keyboard_wasd()
-        );
+        // let first_person = FirstPerson::new(
+        //     [0.5, 0.5, 4.0],
+        //     FirstPersonSettings::keyboard_wasd()
+        // );
 
         let data = pipe::Data {
             vbuf: vbuf.clone(),
@@ -141,7 +140,7 @@ impl Cube {
             vertices: cube_vertex_data,
             indices: cube_index_data,
             texels: cube_texel_data,
-            first_person: first_person,
+            // first_person: first_person,
             model: model,
             projection: projection,
             slice: slice,
@@ -172,10 +171,10 @@ impl Object for Cube {
         self.name.clone()
     }
 
-    fn draw(&mut self, w: &mut PistonWindow, args: &RenderArgs) -> io::Result<i32> {
+    fn draw(&mut self, w: &mut PistonWindow, args: &RenderArgs, first_person: &FirstPerson) -> io::Result<i32> {
         self.data.u_model_view_proj = model_view_projection(
             self.model,
-            self.first_person.camera(args.ext_dt).orthogonal(),
+            first_person.camera(args.ext_dt).orthogonal(),
             self.projection
         );
         w.encoder.draw(&self.slice, &self.pso, &self.data);

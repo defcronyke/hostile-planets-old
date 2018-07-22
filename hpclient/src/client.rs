@@ -2,6 +2,7 @@ use conf::*;
 use window::*;
 use cube::*;
 use object::*;
+use asset_loader::*;
 
 use cpython::PyResult;
 use std::fs::File;
@@ -11,6 +12,10 @@ use std::net::TcpStream;
 use std::{thread, time};
 use toml;
 use piston_window::{RenderEvent, ResizeEvent};
+use camera_controllers::{
+  FirstPerson,
+  FirstPersonSettings
+};
 
 py_module_initializer!(hpclient, inithpclient, PyInit_hpclient, |py, m| {
     try!(m.add(py, "__doc__", "This module is implemented in Rust."));
@@ -134,19 +139,41 @@ impl HostilePlanetsClient {
         let mut pw = _PistonWindow::new();
         let mut cube = Cube::new(&mut pw);
         let w = &mut pw.window;
+
+        let mut first_person = FirstPerson::new(
+            [0.5, 0.5, 4.0],
+            FirstPersonSettings::keyboard_wasd()
+        );
+
+        let objects = vec![
+          load_gltf(w, "./hpclient/assets/biped_robot/scene.gltf").unwrap(),
+        ];
         
         while let Some(e) = w.next() {
-            cube.first_person.event(&e);
+            let mut first_person = &mut first_person;
+            first_person.event(&e);
 
             w.draw_3d(&e, |w| {
                 let args = e.render_args().unwrap();
                 w.encoder.clear(&w.output_color, [0.3, 0.3, 0.3, 1.0]);
                 w.encoder.clear_depth(&w.output_stencil, 1.0);
-                cube.draw(w, &args).unwrap();
+                cube.draw(w, &args, &first_person).unwrap();
+
+                for mut obj in objects.clone() {
+                  match obj.draw(w, &args, &first_person) {
+                    _ => (),
+                  }
+                }
             });
 
             if let Some(_) = e.resize_args() {
                 cube.reset(w).unwrap();
+
+                for mut obj in objects.clone() {
+                  match obj.reset(w) {
+                    _ => (),
+                  }
+                }
             }
         } 
         
