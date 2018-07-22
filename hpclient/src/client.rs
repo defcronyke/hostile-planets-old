@@ -1,9 +1,9 @@
 use conf::*;
-use window::*;
-use cube::*;
-use object::*;
+// use window::*;
+// use cube::*;
+// use object::*;
 use gltf_object::*;
-use asset_loader;
+// use asset_loader;
 
 use cpython::PyResult;
 use std::fs::File;
@@ -12,11 +12,11 @@ use std::io::{BufRead, BufReader, Read};
 use std::net::TcpStream;
 use std::{thread, time};
 use toml;
-use piston_window::{RenderEvent, ResizeEvent};
-use camera_controllers::{
-  FirstPerson,
-  FirstPersonSettings
-};
+// use piston_window::{RenderEvent, ResizeEvent};
+// use camera_controllers::{
+//   FirstPerson,
+//   FirstPersonSettings
+// };
 use std::sync::{Arc, RwLock};
 
 py_module_initializer!(hpclient, inithpclient, PyInit_hpclient, |py, m| {
@@ -70,10 +70,10 @@ py_class!(class Client |py| {
   // the objects vector.
   //
   // Returns the index that the object is saved at in the objects vector.
-  def load_gltf(&self, path: &str) -> PyResult<i32> {
+  def load_gltf(&self, _path: &str) -> PyResult<i32> {
     let client = self.client(py);
-    let mut objects = client.objects.write().unwrap();
-    objects.push(asset_loader::load_gltf(path).unwrap());
+    let objects = client.objects.write().unwrap();
+    // objects.push(asset_loader::load_gltf(path).unwrap());
 
     Ok((objects.clone().len() - 1) as i32)
   }
@@ -152,14 +152,14 @@ impl HostilePlanetsClient {
   }
 
   pub fn run(&self) -> io::Result<()> {
-    let mut pw = _PistonWindow::new();
-    let mut cube = Cube::new(&mut pw);
-    let w = &mut pw.window;
+    // let mut pw = _PistonWindow::new();
+    // let cube = Cube::new(&mut pw);
+    // let w = &mut pw.window;
 
-    let mut first_person = FirstPerson::new(
-      [0.5, 0.5, 4.0],
-      FirstPersonSettings::keyboard_wasd()
-    );
+    // let mut first_person = FirstPerson::new(
+    //   [0.5, 0.5, 4.0],
+    //   FirstPersonSettings::keyboard_wasd()
+    // );
 
     // let objects = self.objects.write().unwrap();
     
@@ -172,38 +172,38 @@ impl HostilePlanetsClient {
     //   }
     // }
     
-    while let Some(e) = w.next() {
-      let mut first_person = &mut first_person;
-      first_person.event(&e);
+    // while let Some(e) = w.next() {
+    //   // let mut first_person = &mut first_person;
+    //   // first_person.event(&e);
 
-      w.draw_3d(&e, |w| {
-        let args = e.render_args().unwrap();
-        w.encoder.clear(&w.output_color, [0.3, 0.3, 0.3, 1.0]);
-        w.encoder.clear_depth(&w.output_stencil, 1.0);
-        cube.draw(w, &args, &first_person).unwrap();
-        let objects = self.objects.write().unwrap();
+    //   w.draw_3d(&e, |w| {
+    //     let args = e.render_args().unwrap();
+    //     w.encoder.clear(&w.output_color, [0.3, 0.3, 0.3, 1.0]);
+    //     w.encoder.clear_depth(&w.output_stencil, 1.0);
+    //     // cube.draw(w, &args, &first_person).unwrap();
+    //     let objects = self.objects.write().unwrap();
 
-        for mut obj in objects.clone() {
-          match obj.draw(w, &args, &first_person) {
-            _ => {
-              obj.set_projection(w).unwrap();
-              ()
-            },
-          }
-        }
-      });
+    //     for mut obj in objects.clone() {
+    //       // match obj.draw(w, &args, &first_person) {
+    //       //   _ => {
+    //       //     obj.set_projection(w).unwrap();
+    //       //     ()
+    //       //   },
+    //       // }
+    //     }
+    //   });
 
-      if let Some(_) = e.resize_args() {
-        cube.reset(w).unwrap();
-        let objects = self.objects.write().unwrap();
+    //   if let Some(_) = e.resize_args() {
+    //     cube.reset(w).unwrap();
+    //     let objects = self.objects.write().unwrap();
 
-        for mut obj in objects.clone() {
-          match obj.reset(w) {
-            _ => (),
-          }
-        }
-      }
-    } 
+    //     for mut obj in objects.clone() {
+    //       match obj.reset(w) {
+    //         _ => (),
+    //       }
+    //     }
+    //   }
+    // } 
     
     Ok(())
   }

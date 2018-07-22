@@ -53,7 +53,7 @@ print("client conf:")
 print(c.get_conf())
 
 # Load a 3D model that's in glTF format.
-c.load_gltf("hpclient/assets/models/cube/cube.glb")
+# c.load_gltf("hpclient/assets/models/cube/cube.glb")
 
 # Start the client's main loop.
 c.run()

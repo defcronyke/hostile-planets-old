@@ -1,22 +1,22 @@
 use object::*;
-use window::*;
+// use window::*;
 
 use gltf;
-use std::io;
-use vecmath::*;
-use piston_window::*;
-use piston_window::Window;
-use camera_controllers::{
-    CameraPerspective,
-    model_view_projection,
-    FirstPerson
-};
+// use std::io;
+// use vecmath::*;
+// use piston_window::*;
+// use piston_window::Window;
+// use camera_controllers::{
+//     CameraPerspective,
+//     model_view_projection,
+//     FirstPerson
+// };
 
 #[derive(Debug, Clone)]
 pub struct GltfObject {
   pub data: gltf::Gltf,
-  pub model: Matrix4<f32>,
-  pub projection: Matrix4<f32>,
+  // pub model: Matrix4<f32>,
+  // pub projection: Matrix4<f32>,
   // pub u_model_view_proj: Matrix4<f32>,
 }
 
@@ -66,27 +66,27 @@ impl GltfObject {
   //   Ok(0)
   // }
 
-  pub fn reset(&mut self, w: &mut PistonWindow) -> io::Result<i32> {
-    self.projection = Self::get_projection(&w);
-    // self.data.out_color = w.output_color.clone();
-    // self.data.out_depth = w.output_stencil.clone();
+  // pub fn reset(&mut self, w: &mut PistonWindow) -> io::Result<i32> {
+  //   self.projection = Self::get_projection(&w);
+  //   // self.data.out_color = w.output_color.clone();
+  //   // self.data.out_depth = w.output_stencil.clone();
 
-    Ok(0)
-  }
+  //   Ok(0)
+  // }
 
-  pub fn get_projection(w: &PistonWindow) -> Matrix4<f32> {
-    let draw_size = w.window.draw_size();
-    CameraPerspective {
-      fov: 90.0, near_clip: 0.1, far_clip: 1000.0,
-      aspect_ratio: (draw_size.width as f32) / (draw_size.height as f32)
-    }.projection()
-  }
+  // pub fn get_projection(w: &PistonWindow) -> Matrix4<f32> {
+  //   let draw_size = w.window.draw_size();
+  //   CameraPerspective {
+  //     fov: 90.0, near_clip: 0.1, far_clip: 1000.0,
+  //     aspect_ratio: (draw_size.width as f32) / (draw_size.height as f32)
+  //   }.projection()
+  // }
 
-  pub fn set_projection(&mut self, w: &mut PistonWindow) -> io::Result<i32> {
-    self.projection = GltfObject::get_projection(&w);
+  // pub fn set_projection(&mut self, w: &mut PistonWindow) -> io::Result<i32> {
+  //   self.projection = GltfObject::get_projection(&w);
 
-    Ok(0)
-  }
+  //   Ok(0)
+  // }
 }
 
 impl Object for GltfObject {
@@ -94,14 +94,14 @@ impl Object for GltfObject {
     String::from("a gltf object")
   }
 
-  fn draw(&mut self, w: &mut PistonWindow, args: &RenderArgs, first_person: &FirstPerson) -> io::Result<i32> {
-    // self.u_model_view_proj = model_view_projection(
-    //   self.model,
-    //   first_person.camera(args.ext_dt).orthogonal(),
-    //   self.projection
-    // );
-    // w.encoder.draw(&self.slice, &self.pso, &self.data);
+  // fn draw(&mut self, w: &mut PistonWindow, args: &RenderArgs, first_person: &FirstPerson) -> io::Result<i32> {
+  //   // self.u_model_view_proj = model_view_projection(
+  //   //   self.model,
+  //   //   first_person.camera(args.ext_dt).orthogonal(),
+  //   //   self.projection
+  //   // );
+  //   // w.encoder.draw(&self.slice, &self.pso, &self.data);
 
-    Ok(0)
-  }
+  //   Ok(0)
+  // }
 }
