@@ -168,18 +168,18 @@ impl Cube {
 
 
 impl Object for Cube {
-    fn get_name(&self) -> String {
-        self.name.clone()
-    }
+  fn get_name(&self) -> String {
+    self.name.clone()
+  }
 
-    fn draw(&mut self, w: &mut PistonWindow, args: &RenderArgs, first_person: &FirstPerson) -> io::Result<i32> {
-        self.data.u_model_view_proj = model_view_projection(
-            self.model,
-            first_person.camera(args.ext_dt).orthogonal(),
-            self.projection
-        );
-        w.encoder.draw(&self.slice, &self.pso, &self.data);
+  fn draw(&mut self, w: &mut PistonWindow, args: &RenderArgs, first_person: &FirstPerson) -> io::Result<i32> {
+    self.data.u_model_view_proj = model_view_projection(
+      self.model,
+      first_person.camera(args.ext_dt).orthogonal(),
+      self.projection
+    );
+    w.encoder.draw(&self.slice, &self.pso, &self.data);
 
-        Ok(0)
-    }
+    Ok(0)
+  }
 }

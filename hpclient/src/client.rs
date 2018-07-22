@@ -119,81 +119,92 @@ pub trait _Client {
 impl _Client for HostilePlanetsClient {}
 
 impl HostilePlanetsClient {
-    pub fn new(conf_path: &str) -> Self {
-        let name = String::from("Hostile Planets client");
-        println!("loading {} ...", name);
+  pub fn new(conf_path: &str) -> Self {
+    let name = String::from("Hostile Planets client");
+    println!("loading {} ...", name);
 
-        let mut f = File::open(conf_path).expect("file not found");
-        let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .expect("something went wrong reading the file");
+    let mut f = File::open(conf_path).expect("file not found");
+    let mut contents = String::new();
+    f.read_to_string(&mut contents)
+      .expect("something went wrong reading the file");
 
-        let conf: ClientConf = toml::from_str(&contents).unwrap();
+    let conf: ClientConf = toml::from_str(&contents).unwrap();
 
-        println!("using config {}: {:?}", conf_path, conf);
+    println!("using config {}: {:?}", conf_path, conf);
 
-        let c = Self {
-            name: name.clone(),
-            conf: conf,
-            server_con: None,
-            objects: Arc::new(RwLock::new(Vec::new())),
-        };
+    let c = Self {
+      name: name.clone(),
+      conf: conf,
+      server_con: None,
+      objects: Arc::new(RwLock::new(Vec::new())),
+    };
 
-        println!("{} loaded", name);
+    println!("{} loaded", name);
 
-        c
-    }
+    c
+  }
 
-    // Connect to the server specified in conf.toml.
-    pub fn connect(&self) -> io::Result<TcpStream> {
-        // Connect to the server.
-        let addr = format!("{}:{}", self.conf.client.ip, self.conf.client.port);
-        self.connect_to(&addr)
-    }
+  // Connect to the server specified in conf.toml.
+  pub fn connect(&self) -> io::Result<TcpStream> {
+    // Connect to the server.
+    let addr = format!("{}:{}", self.conf.client.ip, self.conf.client.port);
+    self.connect_to(&addr)
+  }
 
-    pub fn run(&self) -> io::Result<()> {
-        let mut pw = _PistonWindow::new();
-        let mut cube = Cube::new(&mut pw);
-        let w = &mut pw.window;
+  pub fn run(&self) -> io::Result<()> {
+    let mut pw = _PistonWindow::new();
+    let mut cube = Cube::new(&mut pw);
+    let w = &mut pw.window;
 
-        let mut first_person = FirstPerson::new(
-            [0.5, 0.5, 4.0],
-            FirstPersonSettings::keyboard_wasd()
-        );
-        
-        while let Some(e) = w.next() {
-            let mut first_person = &mut first_person;
-            first_person.event(&e);
+    let mut first_person = FirstPerson::new(
+      [0.5, 0.5, 4.0],
+      FirstPersonSettings::keyboard_wasd()
+    );
 
-            w.draw_3d(&e, |w| {
-                let args = e.render_args().unwrap();
-                w.encoder.clear(&w.output_color, [0.3, 0.3, 0.3, 1.0]);
-                w.encoder.clear_depth(&w.output_stencil, 1.0);
-                cube.draw(w, &args, &first_person).unwrap();
-                let objects = self.objects.write().unwrap();
+    // let objects = self.objects.write().unwrap();
+    
+    // for mut obj in objects.clone() {
+    //   match obj.init(w, &first_person) {
+    //     _ => {
+    //       obj.set_projection(w).unwrap();
+    //       ()
+    //     },
+    //   }
+    // }
+    
+    while let Some(e) = w.next() {
+      let mut first_person = &mut first_person;
+      first_person.event(&e);
 
-                for mut obj in objects.clone() {
-                  match obj.draw(w, &args, &first_person) {
-                    _ => {
-                      obj.set_projection(w).unwrap();
-                      ()
-                    },
-                  }
-                }
-            });
+      w.draw_3d(&e, |w| {
+        let args = e.render_args().unwrap();
+        w.encoder.clear(&w.output_color, [0.3, 0.3, 0.3, 1.0]);
+        w.encoder.clear_depth(&w.output_stencil, 1.0);
+        cube.draw(w, &args, &first_person).unwrap();
+        let objects = self.objects.write().unwrap();
 
-            if let Some(_) = e.resize_args() {
-                cube.reset(w).unwrap();
-                let objects = self.objects.write().unwrap();
+        for mut obj in objects.clone() {
+          match obj.draw(w, &args, &first_person) {
+            _ => {
+              obj.set_projection(w).unwrap();
+              ()
+            },
+          }
+        }
+      });
 
-                for mut obj in objects.clone() {
-                  match obj.reset(w) {
-                    _ => (),
-                  }
-                }
-            }
-        } 
-        
-        Ok(())
-    }
+      if let Some(_) = e.resize_args() {
+        cube.reset(w).unwrap();
+        let objects = self.objects.write().unwrap();
+
+        for mut obj in objects.clone() {
+          match obj.reset(w) {
+            _ => (),
+          }
+        }
+      }
+    } 
+    
+    Ok(())
+  }
 }
