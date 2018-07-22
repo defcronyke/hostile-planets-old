@@ -12,6 +12,7 @@ extern crate camera_controllers;
 extern crate gfx;
 extern crate gfx_device_gl;
 extern crate shader_version;
+extern crate gltf;
 
 pub mod client;
 pub mod conf;
@@ -19,6 +20,8 @@ pub mod window;
 pub mod cube;
 pub mod vertex;
 pub mod object;
+pub mod asset_loader;
+pub mod gltf_object;
 
 // #[cfg(test)]
 // mod tests {
