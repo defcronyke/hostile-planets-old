@@ -66,11 +66,16 @@ py_class!(class Client |py| {
     Ok(0)
   }
 
+  // Loads the GLTF file from disk and parses it, then saves it into
+  // the objects vector.
+  //
+  // Returns the index that the object is saved at in the objects vector.
   def load_gltf(&self, path: &str) -> PyResult<i32> {
     let client = self.client(py);
-    client.objects.write().unwrap().push(asset_loader::load_gltf(path).unwrap());
+    let mut objects = client.objects.write().unwrap();
+    objects.push(asset_loader::load_gltf(path).unwrap());
 
-    Ok(0)
+    Ok((objects.clone().len() - 1) as i32)
   }
 });
 
