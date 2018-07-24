@@ -1,12 +1,10 @@
 [package]
-name = "hostile-planets-client"
+name = "hpclient"
 version = "0.1.0"
 authors = ["Jeremy Carter <Jeremy@JeremyCarter.ca>"]
 
 [features]
-# default = ["vulkan"]
-# default = ["gl"]
-default = []
+default = ["vulkan"]
 metal = ["gfx-backend-metal"]
 gl = ["gfx-backend-gl"]
 dx12 = ["gfx-backend-dx12"]

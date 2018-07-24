@@ -1,7 +1,9 @@
 # Run this script to launch a client and try to connect to a remote 
 # server defined in the clientconf.toml config file.
-import hpclient
 from threading import Thread
+import hpclient_vulkan as hpclient
+# import hpclient_dx12 as hpclient
+# import hpclient_gl as hpclient
 
 # Instantiate a new Client.
 c = hpclient.Client("clientconf.toml")

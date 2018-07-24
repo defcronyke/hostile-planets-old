@@ -1,5 +1,5 @@
 [package]
-name = "hostile-planets-server"
+name = "hpserver"
 version = "0.1.0"
 authors = ["Jeremy Carter <Jeremy@JeremyCarter.ca>"]
 

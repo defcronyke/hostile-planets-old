@@ -1,7 +1,9 @@
 # Run this script to launch both a local server and a client which will connect to it.
+from threading import Thread
 import hpserver
 import hpclient_vulkan as hpclient
-from threading import Thread
+# import hpclient_dx12 as hpclient
+# import hpclient_gl as hpclient
 
 # Instantiate a new Server.
 s = hpserver.Server("serverconf.toml")
