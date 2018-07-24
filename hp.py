@@ -40,6 +40,9 @@ print("is " + player + " connected? " + str(s.is_connected(player)))
 # Instantiate a new Client.
 c = hpclient.Client("clientconf.toml")
 
+# Print the client type.
+print("client type: " + c.client_type())
+
 # Connect in the background to the server listed in the clientconf.toml file.
 Thread(target=c.connect, daemon=True).start()
 

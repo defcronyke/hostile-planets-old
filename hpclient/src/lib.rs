@@ -10,8 +10,8 @@ extern crate cpython;
 extern crate chrono;
 extern crate timer;
 extern crate toml;
-
 extern crate env_logger;
+
 #[cfg(feature = "dx12")]
 extern crate gfx_backend_dx12 as back;
 #[cfg(feature = "gl")]
@@ -20,8 +20,10 @@ extern crate gfx_backend_gl as back;
 extern crate gfx_backend_metal as back;
 #[cfg(feature = "vulkan")]
 extern crate gfx_backend_vulkan as back;
-extern crate gfx_hal as hal;
+#[cfg(not(any(feature = "vulkan", feature = "dx12", feature = "metal", feature = "gl")))]
+extern crate gfx_backend_empty as back;
 
+extern crate gfx_hal as hal;
 extern crate glsl_to_spirv;
 extern crate image;
 extern crate winit;

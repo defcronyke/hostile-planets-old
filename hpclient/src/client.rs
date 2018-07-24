@@ -109,6 +109,10 @@ py_class!(class Client |py| {
     Self::create_instance(py, c)
   }
 
+  def client_type(&self) -> PyResult<String> {
+    Ok(HostilePlanetsClient::client_type())
+  }
+
   def connect(&self) -> PyResult<i32> {
     let client = self.client(py);
     py.allow_threads(|| {
@@ -161,6 +165,22 @@ pub struct HostilePlanetsClient {
 }
 
 pub trait _Client {
+  // Client type.
+  #[cfg(feature = "vulkan")]
+  fn client_type() -> String {
+    String::from("Vulkan")
+  }
+
+  #[cfg(feature = "dx12")]
+  fn client_type() -> String {
+    String::from("DirectX 12")
+  }
+
+  #[cfg(feature = "gl")]
+  fn client_type() -> String {
+    String::from("OpenGL")
+  }
+
   // Connect to a server by address, such as: "127.0.0.1:8080"
   fn connect_to(&self, address: &str) -> io::Result<TcpStream> {
     // Connect to the server.
