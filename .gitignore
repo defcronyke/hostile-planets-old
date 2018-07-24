@@ -2,4 +2,6 @@ target/
 **/*.rs.bk
 Cargo.lock
 hpserver.pyd
-hpclient.pyd
+hpclient_vulkan.pyd
+hpclient_dx12.pyd
+hpclient_gl.pyd

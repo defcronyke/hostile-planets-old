@@ -1,6 +1,6 @@
 # Run this script to launch both a local server and a client which will connect to it.
 import hpserver
-import hpclient
+import hpclient_vulkan as hpclient
 from threading import Thread
 
 # Instantiate a new Server.
