@@ -1,4 +1,4 @@
 cd hpclient
-cargo build --no-default-features --features vulkan
+cargo build --no-default-features --features vulkan --target-dir ../target-vulkan
 cd ..
-cp target/debug/hpclient.dll ./hpclient_vulkan.pyd
+cp target-vulkan/debug/hpclient.dll ./hpclient_vulkan.pyd

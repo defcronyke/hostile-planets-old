@@ -1,4 +1,7 @@
 target/
+target-vulkan/
+target-dx12/
+target-gl/
 **/*.rs.bk
 Cargo.lock
 hpserver.pyd
