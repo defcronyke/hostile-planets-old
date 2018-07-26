@@ -1,6 +1,6 @@
-use vertex::*;
-use window::*;
-use object::*;
+// use vertex::*;
+// use window::*;
+// use object::*;
 
 // use piston_window::*;
 // use piston_window::Window;
