@@ -289,31 +289,7 @@ impl HostilePlanetsClient {
     }
 
     // cleanup!
-    data.device.destroy_command_pool(data.command_pool.into_raw());
-    data.device.destroy_descriptor_pool(data.desc_pool);
-    data.device.destroy_descriptor_set_layout(data.set_layout);
-
-    data.device.destroy_buffer(data.vertex_buffer);
-    data.device.destroy_buffer(data.image_upload_buffer);
-    data.device.destroy_image(data.image_logo);
-    data.device.destroy_image_view(data.image_srv);
-    data.device.destroy_sampler(data.sampler);
-    data.device.destroy_fence(data.frame_fence);
-    data.device.destroy_semaphore(data.frame_semaphore);
-    data.device.destroy_render_pass(data.render_pass);
-    data.device.free_memory(data.buffer_memory);
-    data.device.free_memory(data.image_memory);
-    data.device.free_memory(data.image_upload_memory);
-    data.device.destroy_graphics_pipeline(data.pipeline);
-    data.device.destroy_pipeline_layout(data.pipeline_layout);
-    for framebuffer in data.framebuffers {
-      data.device.destroy_framebuffer(framebuffer);
-    }
-    for (_, rtv) in data.frame_images {
-      data.device.destroy_image_view(rtv);
-    }
-
-    data.device.destroy_swapchain(data.swap_chain);
+    _WinitWindow::cleanup(data);
     
     Ok(())
   }
