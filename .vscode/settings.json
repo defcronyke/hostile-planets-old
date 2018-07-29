@@ -1,4 +1,4 @@
 {
-  "editor.formatOnSave": false,
+  "editor.formatOnSave": true,
   "python.pythonPath": "C:\\Users\\jerem\\AppData\\Local\\Programs\\Python\\Python36\\python.exe"
 }
