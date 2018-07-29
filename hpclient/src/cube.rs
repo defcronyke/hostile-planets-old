@@ -93,7 +93,6 @@
 //           [0x00, 0x00, 0xff, 0x00],
 //       ];
 
-
 //       // let w = &pw.window;
 //       // let ogl = pw.opengl;
 //       // let ref mut f = w.factory.clone();
@@ -165,7 +164,6 @@
 //   //     Ok(0)
 //   // }
 // }
-
 
 // impl Object for Cube {
 //   fn get_name(&self) -> String {
