@@ -17,7 +17,7 @@ use quad::QUAD;
 use std;
 use std::fs;
 use std::io::{Cursor, Read};
-use vertex::Vertex;
+use vertex::Vertex2D;
 use winit;
 
 const COLOR_RANGE: i::SubresourceRange = i::SubresourceRange {
@@ -192,7 +192,7 @@ impl _WinitWindow {
     // Buffer allocations
     println!("Memory types: {:?}", memory_types);
 
-    let buffer_stride = std::mem::size_of::<Vertex>() as u64;
+    let buffer_stride = std::mem::size_of::<Vertex2D>() as u64;
     let buffer_len = QUAD.len() as u64 * buffer_stride;
 
     let buffer_unbound = device
@@ -220,7 +220,7 @@ impl _WinitWindow {
     // TODO: check transitions: read/write mapping and vertex buffer read
     {
       let mut vertices = device
-        .acquire_mapping_writer::<Vertex>(&buffer_memory, 0..buffer_len)
+        .acquire_mapping_writer::<Vertex2D>(&buffer_memory, 0..buffer_len)
         .unwrap();
       vertices.copy_from_slice(&QUAD);
       device.release_mapping_writer(vertices);
@@ -718,7 +718,7 @@ impl _WinitWindow {
         ));
         pipeline_desc.vertex_buffers.push(pso::VertexBufferDesc {
           binding: 0,
-          stride: std::mem::size_of::<Vertex>() as u32,
+          stride: std::mem::size_of::<Vertex2D>() as u32,
           rate: 0,
         });
 
