@@ -1,6 +1,8 @@
 use conf::ClientConf;
 use window::_WinitWindow;
-use gltf_object::GltfObject;
+// use gltf_object::GltfObject;
+use object::Object;
+use asset_loader;
 use cpython::PyResult;
 use std::fs::File;
 use std::io;
@@ -92,12 +94,12 @@ py_class!(class Client |_py| {
   // the objects vector.
   //
   // Returns the index that the object is saved at in the objects vector.
-  def load_gltf(&self, _path: &str) -> PyResult<i32> {
+  def load_gltf(&self, path: &str) -> PyResult<i32> {
     let client = self.client(_py);
-    let objects = client.objects.write().unwrap();
-    // objects.push(asset_loader::load_gltf(path).unwrap());
+    let mut objects = client.objects.write().unwrap();
+    objects.push(Box::new(asset_loader::load_gltf(path).unwrap()));
 
-    Ok((objects.clone().len() - 1) as i32)
+    Ok((objects.len() - 1) as i32)
   }
 });
 
@@ -105,7 +107,7 @@ pub struct HostilePlanetsClient {
   pub name: String,
   pub conf: ClientConf,
   pub server_con: Option<TcpStream>,
-  pub objects: Arc<RwLock<Vec<GltfObject>>>,
+  pub objects: Arc<RwLock<Vec<Box<Object>>>>,
 }
 
 pub trait _Client {

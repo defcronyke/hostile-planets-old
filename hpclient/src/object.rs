@@ -4,7 +4,7 @@
 // use camera_controllers::FirstPerson;
 // use vecmath::*;
 
-pub trait Object {
+pub trait Object: Send + Sync {
   fn get_name(&self) -> String {
     String::from("an unknown object")
   }

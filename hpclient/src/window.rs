@@ -13,7 +13,8 @@ use hal::{
   QueueGroup, Surface, SwapchainConfig,
 };
 use image;
-use quad::QUAD;
+// use quad::QUAD;
+use quad::Quad;
 use std;
 use std::fs;
 use std::io::{Cursor, Read};
@@ -192,8 +193,11 @@ impl _WinitWindow {
     // Buffer allocations
     println!("Memory types: {:?}", memory_types);
 
+    let quad = Quad::new();
     let buffer_stride = std::mem::size_of::<Vertex2D>() as u64;
-    let buffer_len = QUAD.len() as u64 * buffer_stride;
+    let buffer_len = quad.vertices.len() as u64 * buffer_stride;
+    // let buffer_stride = std::mem::size_of::<Vertex2D>() as u64;
+    // let buffer_len = QUAD.len() as u64 * buffer_stride;
 
     let buffer_unbound = device
       .create_buffer(buffer_len, buffer::Usage::VERTEX)
@@ -222,12 +226,13 @@ impl _WinitWindow {
       let mut vertices = device
         .acquire_mapping_writer::<Vertex2D>(&buffer_memory, 0..buffer_len)
         .unwrap();
-      vertices.copy_from_slice(&QUAD);
+      vertices.copy_from_slice(&quad.vertices);
       device.release_mapping_writer(vertices);
     }
 
     // Image
-    let img_data = include_bytes!("../../../gfx/examples/quad/data/logo.png");
+    let img_data = include_bytes!("../../data/logo.png");
+    // let img_data = include_bytes!("../../../gfx/examples/quad/data/logo.png");
 
     let img = image::load(Cursor::new(&img_data[..]), image::PNG)
       .unwrap()
@@ -657,7 +662,8 @@ impl _WinitWindow {
       device.create_pipeline_layout(Some(set_layout), &[(pso::ShaderStageFlags::VERTEX, 0..8)]);
     let pipeline = {
       let vs_module = {
-        let glsl = fs::read_to_string("../gfx/examples/quad/data/quad.vert").unwrap();
+        let glsl = fs::read_to_string("data/quad.vert").unwrap();
+        // let glsl = fs::read_to_string("../gfx/examples/quad/data/quad.vert").unwrap();
         let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
           .unwrap()
           .bytes()
@@ -666,7 +672,8 @@ impl _WinitWindow {
         device.create_shader_module(&spirv).unwrap()
       };
       let fs_module = {
-        let glsl = fs::read_to_string("../gfx/examples/quad/data/quad.frag").unwrap();
+        let glsl = fs::read_to_string("data/quad.frag").unwrap();
+        // let glsl = fs::read_to_string("../gfx/examples/quad/data/quad.frag").unwrap();
         let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
           .unwrap()
           .bytes()
