@@ -1,5 +1,6 @@
 use back;
 use back::Backend;
+use cube::Cube;
 use glsl_to_spirv;
 use hal;
 use hal::format::{AsFormat, ChannelType, Rgba8Srgb as ColorFormat, Swizzle};
@@ -13,12 +14,11 @@ use hal::{
   QueueGroup, Surface, SwapchainConfig,
 };
 use image;
-// use quad::QUAD;
-use quad::Quad;
+// use quad::Quad;
 use std;
 use std::fs;
 use std::io::{Cursor, Read};
-use vertex::Vertex2D;
+use vertex::Vertex;
 use winit;
 
 const COLOR_RANGE: i::SubresourceRange = i::SubresourceRange {
@@ -53,6 +53,9 @@ pub struct _WinitWindowData {
   pub extent: Extent2D,
   pub viewport: Viewport,
   pub vertex_buffer: <Backend as hal::Backend>::Buffer,
+  pub buffer_memory: <Backend as hal::Backend>::Memory,
+  pub index_buffer: <Backend as hal::Backend>::Buffer,
+  pub index_buffer_memory: <Backend as hal::Backend>::Memory,
   pub desc_set: <Backend as hal::Backend>::DescriptorSet,
   pub desc_pool: <Backend as hal::Backend>::DescriptorPool,
   pub queue_group: QueueGroup<Backend, Graphics>,
@@ -60,7 +63,6 @@ pub struct _WinitWindowData {
   pub image_logo: <Backend as hal::Backend>::Image,
   pub image_srv: <Backend as hal::Backend>::ImageView,
   pub sampler: <Backend as hal::Backend>::Sampler,
-  pub buffer_memory: <Backend as hal::Backend>::Memory,
   pub image_memory: <Backend as hal::Backend>::Memory,
   pub image_upload_memory: <Backend as hal::Backend>::Memory,
 }
@@ -193,11 +195,12 @@ impl _WinitWindow {
     // Buffer allocations
     println!("Memory types: {:?}", memory_types);
 
-    let quad = Quad::new();
-    let buffer_stride = std::mem::size_of::<Vertex2D>() as u64;
-    let buffer_len = quad.vertices.len() as u64 * buffer_stride;
+    let cube = Cube::new();
+    let buffer_stride = std::mem::size_of::<Vertex>() as u64;
+    let buffer_len = cube.vertices.len() as u64 * buffer_stride;
+    // let quad = Quad::new();
     // let buffer_stride = std::mem::size_of::<Vertex2D>() as u64;
-    // let buffer_len = QUAD.len() as u64 * buffer_stride;
+    // let buffer_len = quad.vertices.len() as u64 * buffer_stride;
 
     let buffer_unbound = device
       .create_buffer(buffer_len, buffer::Usage::VERTEX)
@@ -224,10 +227,44 @@ impl _WinitWindow {
     // TODO: check transitions: read/write mapping and vertex buffer read
     {
       let mut vertices = device
-        .acquire_mapping_writer::<Vertex2D>(&buffer_memory, 0..buffer_len)
+        .acquire_mapping_writer::<Vertex>(&buffer_memory, 0..buffer_len)
         .unwrap();
-      vertices.copy_from_slice(&quad.vertices);
+      vertices.copy_from_slice(&cube.vertices);
       device.release_mapping_writer(vertices);
+    }
+
+    let index_buffer_stride = std::mem::size_of::<u16>() as u64;
+    let index_buffer_len = cube.indices.len() as u64 * index_buffer_stride;
+
+    let index_buffer_unbound = device
+      .create_buffer(buffer_len, buffer::Usage::INDEX)
+      .unwrap();
+    let index_buffer_req = device.get_buffer_requirements(&index_buffer_unbound);
+
+    let index_upload_type: hal::MemoryTypeId = memory_types
+      .iter()
+      .enumerate()
+      .position(|(id, mem_type)| {
+        index_buffer_req.type_mask & (1 << id) != 0
+          && mem_type.properties.contains(m::Properties::CPU_VISIBLE)
+      })
+      .unwrap()
+      .into();
+
+    let index_buffer_memory = device
+      .allocate_memory(index_upload_type, index_buffer_req.size)
+      .unwrap();
+    let index_buffer = device
+      .bind_buffer_memory(&index_buffer_memory, 0, index_buffer_unbound)
+      .unwrap();
+
+    // TODO: check transitions: read/write mapping and vertex buffer read
+    {
+      let mut indices = device
+        .acquire_mapping_writer::<u16>(&index_buffer_memory, 0..index_buffer_len)
+        .unwrap();
+      indices.copy_from_slice(&cube.indices);
+      device.release_mapping_writer(indices);
     }
 
     // Image
@@ -433,6 +470,9 @@ impl _WinitWindow {
       set_layout,
       viewport,
       vertex_buffer,
+      buffer_memory,
+      index_buffer,
+      index_buffer_memory,
       desc_set,
       desc_pool,
       queue_group,
@@ -440,7 +480,6 @@ impl _WinitWindow {
       image_logo,
       image_srv,
       sampler,
-      buffer_memory,
       image_memory,
       image_upload_memory,
     }
@@ -508,6 +547,9 @@ impl _WinitWindow {
       set_layout: data.set_layout,
       viewport: data.viewport,
       vertex_buffer: data.vertex_buffer,
+      buffer_memory: data.buffer_memory,
+      index_buffer: data.index_buffer,
+      index_buffer_memory: data.index_buffer_memory,
       desc_set: data.desc_set,
       desc_pool: data.desc_pool,
       queue_group: data.queue_group,
@@ -515,7 +557,6 @@ impl _WinitWindow {
       image_logo: data.image_logo,
       image_srv: data.image_srv,
       sampler: data.sampler,
-      buffer_memory: data.buffer_memory,
       image_memory: data.image_memory,
       image_upload_memory: data.image_upload_memory,
     }
@@ -725,7 +766,7 @@ impl _WinitWindow {
         ));
         pipeline_desc.vertex_buffers.push(pso::VertexBufferDesc {
           binding: 0,
-          stride: std::mem::size_of::<Vertex2D>() as u32,
+          stride: std::mem::size_of::<Vertex>() as u32,
           rate: 0,
         });
 
@@ -774,6 +815,7 @@ impl _WinitWindow {
     data.device.destroy_descriptor_set_layout(data.set_layout);
 
     data.device.destroy_buffer(data.vertex_buffer);
+    data.device.destroy_buffer(data.index_buffer);
     data.device.destroy_buffer(data.image_upload_buffer);
     data.device.destroy_image(data.image_logo);
     data.device.destroy_image_view(data.image_srv);
@@ -782,6 +824,7 @@ impl _WinitWindow {
     data.device.destroy_semaphore(data.frame_semaphore);
     data.device.destroy_render_pass(data.render_pass);
     data.device.free_memory(data.buffer_memory);
+    data.device.free_memory(data.index_buffer_memory);
     data.device.free_memory(data.image_memory);
     data.device.free_memory(data.image_upload_memory);
     data.device.destroy_graphics_pipeline(data.pipeline);

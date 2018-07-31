@@ -1,3 +1,5 @@
+// use back;
+// use back::Backend;
 use conf::ClientConf;
 use window::_WinitWindow;
 // use gltf_object::GltfObject;
@@ -13,10 +15,11 @@ use toml;
 use std::sync::{Arc, RwLock};
 use hal::pso::PipelineStage;
 use hal::queue::Submission;
-use hal::{command, FrameSync, Device, Swapchain};
+use hal::{buffer, command, FrameSync, Device, Swapchain, IndexType};
 use winit;
 use env_logger;
 use hal;
+use cube::Cube;
 
 #[cfg(feature = "gl")]
 use back::glutin::GlContext;
@@ -203,7 +206,7 @@ impl HostilePlanetsClient {
     env_logger::init();
 
     let mut events_loop = winit::EventsLoop::new();
-    let mut w = _WinitWindow::new("quad", 800, 600, &events_loop);
+    let mut w = _WinitWindow::new("cube", 800, 600, &events_loop);
     let mut data = w.init();
 
     let mut running = true;
@@ -259,6 +262,11 @@ impl HostilePlanetsClient {
         cmd_buffer.set_scissors(0, &[data.viewport.rect]);
         cmd_buffer.bind_graphics_pipeline(&data.pipeline);
         cmd_buffer.bind_vertex_buffers(0, Some((&data.vertex_buffer, 0)));
+        cmd_buffer.bind_index_buffer(buffer::IndexBufferView{
+          buffer: &data.index_buffer,
+          offset: 0,
+          index_type: IndexType::U16,
+        });
         cmd_buffer.bind_graphics_descriptor_sets(&data.pipeline_layout, 0, Some(&data.desc_set), &[]); //TODO
 
         {
@@ -270,7 +278,11 @@ impl HostilePlanetsClient {
               0.8, 0.8, 0.8, 1.0,
             ]))],
           );
-          encoder.draw(0..6, 0..1);
+
+          // TODO: Last argument is range of instances. What are instances?
+          encoder.draw_indexed(0..Cube::new().indices.len() as u32, 0, 0..1);
+          // encoder.draw_indexed(0..36, 0, 0..1);
+          // encoder.draw(0..6, 0..1);
         }
 
         cmd_buffer.finish()
