@@ -1,25 +1,25 @@
 use back;
-use back::Backend;
 use cube::Cube;
+use cube_data::_CubeData;
 use glsl_to_spirv;
 use hal;
-use hal::format::{AsFormat, ChannelType, Rgba8Srgb as ColorFormat, Swizzle};
+use hal::format::{ChannelType, Swizzle};
 use hal::pass::Subpass;
-use hal::pso::{PipelineStage, ShaderStageFlags, Specialization, Viewport};
-use hal::queue::Submission;
+use hal::pso::{PipelineStage, ShaderStageFlags, Specialization};
 use hal::window::Extent2D;
 use hal::{
-  adapter, buffer, command, format as f, image as i, memory as m, pass, pool, pso, Adapter,
-  Backbuffer, CommandPool, DescriptorPool, Device, Graphics, Instance, PhysicalDevice, Primitive,
-  QueueGroup, Surface, SwapchainConfig,
+  adapter, format as f, image as i, pass, pool, pso, Backbuffer, DescriptorPool, Device, Instance,
+  PhysicalDevice, Primitive, Surface, SwapchainConfig,
 };
-use image;
-// use quad::Quad;
 use std;
 use std::fs;
-use std::io::{Cursor, Read};
+use std::io::Read;
 use vertex::Vertex;
+use window_data::_WinitWindowData;
 use winit;
+
+#[cfg(feature = "gl")]
+use hal::format::{AsFormat, Rgba8Srgb as ColorFormat};
 
 const COLOR_RANGE: i::SubresourceRange = i::SubresourceRange {
   aspects: f::Aspects::COLOR,
@@ -33,39 +33,6 @@ const ENTRY_NAME: &str = "main";
 type WindowType = winit::Window;
 #[cfg(feature = "gl")]
 type WindowType = u32;
-
-pub struct _WinitWindowData {
-  pub device: back::Device,
-  pub command_pool: CommandPool<Backend, Graphics>,
-  pub frame_semaphore: <Backend as hal::Backend>::Semaphore,
-  pub frame_fence: <Backend as hal::Backend>::Fence,
-  pub pipeline: <Backend as hal::Backend>::GraphicsPipeline,
-  pub pipeline_layout: <Backend as hal::Backend>::PipelineLayout,
-  pub framebuffers: Vec<<Backend as hal::Backend>::Framebuffer>,
-  pub frame_images: Vec<(
-    <Backend as hal::Backend>::Image,
-    <Backend as hal::Backend>::ImageView,
-  )>,
-  pub render_pass: <Backend as hal::Backend>::RenderPass,
-  pub swap_chain: <Backend as hal::Backend>::Swapchain,
-  pub adapter: Adapter<Backend>,
-  pub set_layout: <Backend as hal::Backend>::DescriptorSetLayout,
-  pub extent: Extent2D,
-  pub viewport: Viewport,
-  pub vertex_buffer: <Backend as hal::Backend>::Buffer,
-  pub buffer_memory: <Backend as hal::Backend>::Memory,
-  pub index_buffer: <Backend as hal::Backend>::Buffer,
-  pub index_buffer_memory: <Backend as hal::Backend>::Memory,
-  pub desc_set: <Backend as hal::Backend>::DescriptorSet,
-  pub desc_pool: <Backend as hal::Backend>::DescriptorPool,
-  pub queue_group: QueueGroup<Backend, Graphics>,
-  pub image_upload_buffer: <Backend as hal::Backend>::Buffer,
-  pub image_logo: <Backend as hal::Backend>::Image,
-  pub image_srv: <Backend as hal::Backend>::ImageView,
-  pub sampler: <Backend as hal::Backend>::Sampler,
-  pub image_memory: <Backend as hal::Backend>::Memory,
-  pub image_upload_memory: <Backend as hal::Backend>::Memory,
-}
 
 pub trait Window {}
 
@@ -138,7 +105,7 @@ impl _WinitWindow {
     };
   }
 
-  pub fn init(&mut self) -> _WinitWindowData {
+  pub fn init(&mut self) -> (_WinitWindowData, Cube, _CubeData) {
     for adapter in &self.adapters {
       println!("{:?}", adapter.info);
     }
@@ -196,232 +163,14 @@ impl _WinitWindow {
     println!("Memory types: {:?}", memory_types);
 
     let cube = Cube::new();
-    let buffer_stride = std::mem::size_of::<Vertex>() as u64;
-    let buffer_len = cube.vertices.len() as u64 * buffer_stride;
-    // let quad = Quad::new();
-    // let buffer_stride = std::mem::size_of::<Vertex2D>() as u64;
-    // let buffer_len = quad.vertices.len() as u64 * buffer_stride;
-
-    let buffer_unbound = device
-      .create_buffer(buffer_len, buffer::Usage::VERTEX)
-      .unwrap();
-    let buffer_req = device.get_buffer_requirements(&buffer_unbound);
-
-    let upload_type = memory_types
-      .iter()
-      .enumerate()
-      .position(|(id, mem_type)| {
-        buffer_req.type_mask & (1 << id) != 0
-          && mem_type.properties.contains(m::Properties::CPU_VISIBLE)
-      })
-      .unwrap()
-      .into();
-
-    let buffer_memory = device
-      .allocate_memory(upload_type, buffer_req.size)
-      .unwrap();
-    let vertex_buffer = device
-      .bind_buffer_memory(&buffer_memory, 0, buffer_unbound)
-      .unwrap();
-
-    // TODO: check transitions: read/write mapping and vertex buffer read
-    {
-      let mut vertices = device
-        .acquire_mapping_writer::<Vertex>(&buffer_memory, 0..buffer_len)
-        .unwrap();
-      vertices.copy_from_slice(&cube.vertices);
-      device.release_mapping_writer(vertices);
-    }
-
-    let index_buffer_stride = std::mem::size_of::<u16>() as u64;
-    let index_buffer_len = cube.indices.len() as u64 * index_buffer_stride;
-
-    let index_buffer_unbound = device
-      .create_buffer(buffer_len, buffer::Usage::INDEX)
-      .unwrap();
-    let index_buffer_req = device.get_buffer_requirements(&index_buffer_unbound);
-
-    let index_upload_type: hal::MemoryTypeId = memory_types
-      .iter()
-      .enumerate()
-      .position(|(id, mem_type)| {
-        index_buffer_req.type_mask & (1 << id) != 0
-          && mem_type.properties.contains(m::Properties::CPU_VISIBLE)
-      })
-      .unwrap()
-      .into();
-
-    let index_buffer_memory = device
-      .allocate_memory(index_upload_type, index_buffer_req.size)
-      .unwrap();
-    let index_buffer = device
-      .bind_buffer_memory(&index_buffer_memory, 0, index_buffer_unbound)
-      .unwrap();
-
-    // TODO: check transitions: read/write mapping and vertex buffer read
-    {
-      let mut indices = device
-        .acquire_mapping_writer::<u16>(&index_buffer_memory, 0..index_buffer_len)
-        .unwrap();
-      indices.copy_from_slice(&cube.indices);
-      device.release_mapping_writer(indices);
-    }
-
-    // Image
-    let img_data = include_bytes!("../../data/logo.png");
-    // let img_data = include_bytes!("../../../gfx/examples/quad/data/logo.png");
-
-    let img = image::load(Cursor::new(&img_data[..]), image::PNG)
-      .unwrap()
-      .to_rgba();
-    let (width, height) = img.dimensions();
-    let kind = i::Kind::D2(width as i::Size, height as i::Size, 1, 1);
-    let row_alignment_mask = limits.min_buffer_copy_pitch_alignment as u32 - 1;
-    let image_stride = 4usize;
-    let row_pitch = (width * image_stride as u32 + row_alignment_mask) & !row_alignment_mask;
-    let upload_size = (height * row_pitch) as u64;
-
-    let image_buffer_unbound = device
-      .create_buffer(upload_size, buffer::Usage::TRANSFER_SRC)
-      .unwrap();
-    let image_mem_reqs = device.get_buffer_requirements(&image_buffer_unbound);
-    let image_upload_memory = device
-      .allocate_memory(upload_type, image_mem_reqs.size)
-      .unwrap();
-    let image_upload_buffer = device
-      .bind_buffer_memory(&image_upload_memory, 0, image_buffer_unbound)
-      .unwrap();
-
-    // copy image data into staging buffer
-    {
-      let mut data = device
-        .acquire_mapping_writer::<u8>(&image_upload_memory, 0..upload_size)
-        .unwrap();
-      for y in 0..height as usize {
-        let row =
-          &(*img)[y * (width as usize) * image_stride..(y + 1) * (width as usize) * image_stride];
-        let dest_base = y * row_pitch as usize;
-        data[dest_base..dest_base + row.len()].copy_from_slice(row);
-      }
-      device.release_mapping_writer(data);
-    }
-
-    let image_unbound = device
-      .create_image(
-        kind,
-        1,
-        ColorFormat::SELF,
-        i::Tiling::Optimal,
-        i::Usage::TRANSFER_DST | i::Usage::SAMPLED,
-        i::StorageFlags::empty(),
-      )
-      .unwrap(); // TODO: usage
-    let image_req = device.get_image_requirements(&image_unbound);
-
-    let device_type = memory_types
-      .iter()
-      .enumerate()
-      .position(|(id, memory_type)| {
-        image_req.type_mask & (1 << id) != 0
-          && memory_type.properties.contains(m::Properties::DEVICE_LOCAL)
-      })
-      .unwrap()
-      .into();
-    let image_memory = device.allocate_memory(device_type, image_req.size).unwrap();
-
-    let image_logo = device
-      .bind_image_memory(&image_memory, 0, image_unbound)
-      .unwrap();
-    let image_srv = device
-      .create_image_view(
-        &image_logo,
-        i::ViewKind::D2,
-        ColorFormat::SELF,
-        Swizzle::NO,
-        COLOR_RANGE.clone(),
-      )
-      .unwrap();
-
-    let sampler = device.create_sampler(i::SamplerInfo::new(i::Filter::Linear, i::WrapMode::Clamp));
-
-    device.write_descriptor_sets(vec![
-      pso::DescriptorSetWrite {
-        set: &desc_set,
-        binding: 0,
-        array_offset: 0,
-        descriptors: Some(pso::Descriptor::Image(&image_srv, i::Layout::Undefined)),
-      },
-      pso::DescriptorSetWrite {
-        set: &desc_set,
-        binding: 1,
-        array_offset: 0,
-        descriptors: Some(pso::Descriptor::Sampler(&sampler)),
-      },
-    ]);
-
-    let frame_semaphore = device.create_semaphore();
-    let mut frame_fence = device.create_fence(false); // TODO: remove
-
-    // copy buffer to texture
-    {
-      let submit = {
-        let mut cmd_buffer = command_pool.acquire_command_buffer(false);
-
-        let image_barrier = m::Barrier::Image {
-          states: (i::Access::empty(), i::Layout::Undefined)
-            ..(i::Access::TRANSFER_WRITE, i::Layout::TransferDstOptimal),
-          target: &image_logo,
-          range: COLOR_RANGE.clone(),
-        };
-
-        cmd_buffer.pipeline_barrier(
-          PipelineStage::TOP_OF_PIPE..PipelineStage::TRANSFER,
-          m::Dependencies::empty(),
-          &[image_barrier],
-        );
-
-        cmd_buffer.copy_buffer_to_image(
-          &image_upload_buffer,
-          &image_logo,
-          i::Layout::TransferDstOptimal,
-          &[command::BufferImageCopy {
-            buffer_offset: 0,
-            buffer_width: row_pitch / (image_stride as u32),
-            buffer_height: height as u32,
-            image_layers: i::SubresourceLayers {
-              aspects: f::Aspects::COLOR,
-              level: 0,
-              layers: 0..1,
-            },
-            image_offset: i::Offset { x: 0, y: 0, z: 0 },
-            image_extent: i::Extent {
-              width,
-              height,
-              depth: 1,
-            },
-          }],
-        );
-
-        let image_barrier = m::Barrier::Image {
-          states: (i::Access::TRANSFER_WRITE, i::Layout::TransferDstOptimal)
-            ..(i::Access::SHADER_READ, i::Layout::ShaderReadOnlyOptimal),
-          target: &image_logo,
-          range: COLOR_RANGE.clone(),
-        };
-        cmd_buffer.pipeline_barrier(
-          PipelineStage::TRANSFER..PipelineStage::FRAGMENT_SHADER,
-          m::Dependencies::empty(),
-          &[image_barrier],
-        );
-
-        cmd_buffer.finish()
-      };
-
-      let submission = Submission::new().submit(Some(submit));
-      queue_group.queues[0].submit(submission, Some(&mut frame_fence));
-
-      device.wait_for_fence(&frame_fence, !0);
-    }
+    let cube_data = cube.init(
+      &device,
+      &memory_types,
+      &limits,
+      &desc_set,
+      &mut command_pool,
+      &mut queue_group,
+    );
 
     #[cfg(not(feature = "gl"))]
     let window = &self.window;
@@ -454,35 +203,27 @@ impl _WinitWindow {
       depth: 0.0..1.0,
     };
 
-    _WinitWindowData {
-      swap_chain: new_swap_chain,
-      render_pass: new_render_pass,
-      framebuffers: new_framebuffers,
-      frame_images: new_frame_images,
-      pipeline: new_pipeline,
-      pipeline_layout: new_pipeline_layout,
-      extent: new_extent,
-      device,
-      command_pool,
-      frame_semaphore,
-      frame_fence,
-      adapter,
-      set_layout,
-      viewport,
-      vertex_buffer,
-      buffer_memory,
-      index_buffer,
-      index_buffer_memory,
-      desc_set,
-      desc_pool,
-      queue_group,
-      image_upload_buffer,
-      image_logo,
-      image_srv,
-      sampler,
-      image_memory,
-      image_upload_memory,
-    }
+    (
+      _WinitWindowData {
+        swap_chain: new_swap_chain,
+        render_pass: new_render_pass,
+        framebuffers: new_framebuffers,
+        frame_images: new_frame_images,
+        pipeline: new_pipeline,
+        pipeline_layout: new_pipeline_layout,
+        extent: new_extent,
+        device,
+        command_pool,
+        adapter,
+        set_layout,
+        viewport,
+        desc_set,
+        desc_pool,
+        queue_group,
+      },
+      cube,
+      cube_data,
+    )
   }
 
   pub fn recreate_swapchain(
@@ -541,24 +282,12 @@ impl _WinitWindow {
       extent: new_extent,
       device: data.device,
       command_pool: data.command_pool,
-      frame_semaphore: data.frame_semaphore,
-      frame_fence: data.frame_fence,
       adapter: data.adapter,
       set_layout: data.set_layout,
       viewport: data.viewport,
-      vertex_buffer: data.vertex_buffer,
-      buffer_memory: data.buffer_memory,
-      index_buffer: data.index_buffer,
-      index_buffer_memory: data.index_buffer_memory,
       desc_set: data.desc_set,
       desc_pool: data.desc_pool,
       queue_group: data.queue_group,
-      image_upload_buffer: data.image_upload_buffer,
-      image_logo: data.image_logo,
-      image_srv: data.image_srv,
-      sampler: data.sampler,
-      image_memory: data.image_memory,
-      image_upload_memory: data.image_upload_memory,
     }
   }
 
@@ -704,7 +433,6 @@ impl _WinitWindow {
     let pipeline = {
       let vs_module = {
         let glsl = fs::read_to_string("data/quad.vert").unwrap();
-        // let glsl = fs::read_to_string("../gfx/examples/quad/data/quad.vert").unwrap();
         let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
           .unwrap()
           .bytes()
@@ -714,7 +442,6 @@ impl _WinitWindow {
       };
       let fs_module = {
         let glsl = fs::read_to_string("data/quad.frag").unwrap();
-        // let glsl = fs::read_to_string("../gfx/examples/quad/data/quad.frag").unwrap();
         let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
           .unwrap()
           .bytes()
@@ -813,20 +540,7 @@ impl _WinitWindow {
       .destroy_command_pool(data.command_pool.into_raw());
     data.device.destroy_descriptor_pool(data.desc_pool);
     data.device.destroy_descriptor_set_layout(data.set_layout);
-
-    data.device.destroy_buffer(data.vertex_buffer);
-    data.device.destroy_buffer(data.index_buffer);
-    data.device.destroy_buffer(data.image_upload_buffer);
-    data.device.destroy_image(data.image_logo);
-    data.device.destroy_image_view(data.image_srv);
-    data.device.destroy_sampler(data.sampler);
-    data.device.destroy_fence(data.frame_fence);
-    data.device.destroy_semaphore(data.frame_semaphore);
     data.device.destroy_render_pass(data.render_pass);
-    data.device.free_memory(data.buffer_memory);
-    data.device.free_memory(data.index_buffer_memory);
-    data.device.free_memory(data.image_memory);
-    data.device.free_memory(data.image_upload_memory);
     data.device.destroy_graphics_pipeline(data.pipeline);
     data.device.destroy_pipeline_layout(data.pipeline_layout);
     for framebuffer in data.framebuffers {

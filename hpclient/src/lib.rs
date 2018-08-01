@@ -14,6 +14,7 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate cpython;
+extern crate cgmath;
 extern crate chrono;
 extern crate env_logger;
 extern crate timer;
@@ -49,11 +50,14 @@ pub mod asset_loader;
 pub mod client;
 pub mod conf;
 pub mod cube;
+pub mod cube_data;
 pub mod gltf_object;
 pub mod object;
+pub mod object_data;
 pub mod quad;
 pub mod vertex;
 pub mod window;
+pub mod window_data;
 
 // #[cfg(test)]
 // mod tests {

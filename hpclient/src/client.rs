@@ -1,8 +1,5 @@
-// use back;
-// use back::Backend;
 use conf::ClientConf;
 use window::_WinitWindow;
-// use gltf_object::GltfObject;
 use object::Object;
 use asset_loader;
 use cpython::PyResult;
@@ -13,13 +10,12 @@ use std::net::TcpStream;
 use std::{thread, time};
 use toml;
 use std::sync::{Arc, RwLock};
-use hal::pso::PipelineStage;
-use hal::queue::Submission;
-use hal::{buffer, command, FrameSync, Device, Swapchain, IndexType};
+use hal::{FrameSync, Device, Swapchain};
 use winit;
 use env_logger;
 use hal;
 use cube::Cube;
+use cgmath::{Matrix4, Point3, Vector3, perspective, Deg};
 
 #[cfg(feature = "gl")]
 use back::glutin::GlContext;
@@ -206,8 +202,20 @@ impl HostilePlanetsClient {
     env_logger::init();
 
     let mut events_loop = winit::EventsLoop::new();
-    let mut w = _WinitWindow::new("cube", 800, 600, &events_loop);
-    let mut data = w.init();
+    let window_width = 800;
+    let window_height = 600;
+
+    let mut w = _WinitWindow::new("cube", window_width, window_height, &events_loop);
+    let (mut data, cube, mut cube_data) = w.init();
+
+    // Create the view matrix for sending to GLSL.
+    let _view_matrix = Matrix4::look_at(Point3::new(0.0, 1.0, 0.0), Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
+
+    // Create the projection matrix for sending to GLSL.
+    let near = 0.1;
+    let far = 100.0;
+    let fov = Deg(45.0);
+    let _projection_matrix = perspective(fov, window_width as f64 / window_height as f64, near, far);
 
     let mut running = true;
     let mut recreate_swapchain = false;
@@ -242,10 +250,10 @@ impl HostilePlanetsClient {
         recreate_swapchain = false;
       }
 
-      data.device.reset_fence(&data.frame_fence);
+      data.device.reset_fence(&cube_data.frame_fence);
       data.command_pool.reset();
       let frame: hal::SwapImageIndex = {
-        match data.swap_chain.acquire_image(FrameSync::Semaphore(&mut data.frame_semaphore)) {
+        match data.swap_chain.acquire_image(FrameSync::Semaphore(&mut cube_data.frame_semaphore)) {
           Ok(i) => i,
           Err(_) => {
             recreate_swapchain = true;
@@ -254,55 +262,11 @@ impl HostilePlanetsClient {
         }
       };
 
-      // Rendering
-      let submit = {
-        let mut cmd_buffer = data.command_pool.acquire_command_buffer(false);
-
-        cmd_buffer.set_viewports(0, &[data.viewport.clone()]);
-        cmd_buffer.set_scissors(0, &[data.viewport.rect]);
-        cmd_buffer.bind_graphics_pipeline(&data.pipeline);
-        cmd_buffer.bind_vertex_buffers(0, Some((&data.vertex_buffer, 0)));
-        cmd_buffer.bind_index_buffer(buffer::IndexBufferView{
-          buffer: &data.index_buffer,
-          offset: 0,
-          index_type: IndexType::U16,
-        });
-        cmd_buffer.bind_graphics_descriptor_sets(&data.pipeline_layout, 0, Some(&data.desc_set), &[]); //TODO
-
-        {
-          let mut encoder = cmd_buffer.begin_render_pass_inline(
-            &data.render_pass,
-            &data.framebuffers[frame as usize],
-            data.viewport.rect,
-            &[command::ClearValue::Color(command::ClearColor::Float([
-              0.8, 0.8, 0.8, 1.0,
-            ]))],
-          );
-
-          // TODO: Last argument is range of instances. What are instances?
-          encoder.draw_indexed(0..Cube::new().indices.len() as u32, 0, 0..1);
-          // encoder.draw_indexed(0..36, 0, 0..1);
-          // encoder.draw(0..6, 0..1);
-        }
-
-        cmd_buffer.finish()
-      };
-
-      let submission = Submission::new()
-        .wait_on(&[(&data.frame_semaphore, PipelineStage::BOTTOM_OF_PIPE)])
-        .submit(Some(submit));
-      data.queue_group.queues[0].submit(submission, Some(&mut data.frame_fence));
-
-      // TODO: replace with semaphore
-      data.device.wait_for_fence(&data.frame_fence, !0);
-
-      // present frame
-      if let Err(_) = data.swap_chain.present(&mut data.queue_group.queues[0], frame, &[]) {
-        recreate_swapchain = true;
-      }
+      recreate_swapchain = cube.render(&mut data, &mut cube_data, frame, recreate_swapchain);
     }
 
     // cleanup!
+    Cube::cleanup(&data.device, cube_data);
     _WinitWindow::cleanup(data);
     
     Ok(())

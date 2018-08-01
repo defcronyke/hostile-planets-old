@@ -30,6 +30,10 @@ glsl-to-spirv = "0.1"
 gfx-hal = { path = "../../gfx/src/hal", version = "0.1" }
 gfx-backend-empty = { path = "../../gfx/src/backend/empty", version = "0.1" }
 
+[dependencies.cgmath]
+version = "0.16"
+features = ["swizzle"]
+
 [dependencies.gfx-backend-gl]
 path = "../../gfx/src/backend/gl"
 version = "0.1"
