@@ -8,3 +8,4 @@ hpserver.pyd
 hpclient_vulkan.pyd
 hpclient_dx12.pyd
 hpclient_gl.pyd
+renderdoc-settings.cap

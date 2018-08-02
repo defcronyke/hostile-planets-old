@@ -27,7 +27,7 @@ pub struct Cube {
   pub vertices: [Vertex; 24],
   pub indices: [u16; 36],
   pub texels: [[u8; 4]; 4],
-  pub model_matrix: Matrix4<f32>,
+  pub model_matrix: Matrix4<f64>,
 }
 
 impl Cube {
@@ -49,6 +49,7 @@ impl Cube {
     command_pool: &mut CommandPool<Backend, Graphics>,
     queue_group: &mut QueueGroup<Backend, Graphics>,
   ) -> _CubeData {
+    // Vertex
     let buffer_stride = std::mem::size_of::<Vertex>() as u64;
     let buffer_len = self.vertices.len() as u64 * buffer_stride;
 
@@ -83,6 +84,7 @@ impl Cube {
       device.release_mapping_writer(vertices);
     }
 
+    // Index
     let index_buffer_stride = std::mem::size_of::<u16>() as u64;
     let index_buffer_len = self.indices.len() as u64 * index_buffer_stride;
 
@@ -309,6 +311,7 @@ impl Cube {
         offset: 0,
         index_type: IndexType::U16,
       });
+      // cmd_buffer.bind_uniform_buffer();
       cmd_buffer.bind_graphics_descriptor_sets(&data.pipeline_layout, 0, Some(&data.desc_set), &[]); //TODO
 
       {

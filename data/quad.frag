@@ -19,6 +19,6 @@ layout(location = 0) in vec2 v_uv;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-  outColor = vec4(v_uv.x, v_uv.y, max(v_uv.y - v_uv.x, 0.0), 1.0);
-  // outColor = vec4(1.0, 0.0, 0.0, 1.0);
+  // outColor = vec4(v_uv.x, v_uv.y, max(v_uv.y - v_uv.x, 0.0), 1.0);
+  outColor = vec4(1.0, 0.0, 0.0, 1.0);
 }

@@ -10,12 +10,14 @@ use std::net::TcpStream;
 use std::{thread, time};
 use toml;
 use std::sync::{Arc, RwLock};
-use hal::{FrameSync, Device, Swapchain};
+use hal::{FrameSync, Swapchain, MemoryType, Device, buffer, memory as m, PhysicalDevice};
 use winit;
 use env_logger;
 use hal;
 use cube::Cube;
 use cgmath::{Matrix4, Point3, Vector3, perspective, Deg};
+use std;
+use back;
 
 #[cfg(feature = "gl")]
 use back::glutin::GlContext;
@@ -208,14 +210,18 @@ impl HostilePlanetsClient {
     let mut w = _WinitWindow::new("cube", window_width, window_height, &events_loop);
     let (mut data, cube, mut cube_data) = w.init();
 
-    // Create the view matrix for sending to GLSL.
-    let _view_matrix = Matrix4::look_at(Point3::new(0.0, 1.0, 0.0), Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
+    // // Create the view matrix for sending to GLSL.
+    // let view_matrix = Matrix4::look_at(Point3::new(0.0, 1.0, 0.0), Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
 
-    // Create the projection matrix for sending to GLSL.
-    let near = 0.1;
-    let far = 100.0;
-    let fov = Deg(45.0);
-    let _projection_matrix = perspective(fov, window_width as f64 / window_height as f64, near, far);
+    // // Create the projection matrix for sending to GLSL.
+    // let near = 0.1;
+    // let far = 100.0;
+    // let fov = Deg(45.0);
+    // let projection_matrix = perspective(fov, window_width as f64 / window_height as f64, near, far);
+
+    // let memory_types = data.adapter.physical_device.memory_properties().memory_types;
+
+    // let model_uniform_buffer = w.create_uniform_buffers(&cube.model_matrix, &view_matrix, &projection_matrix, &data.device, &memory_types);
 
     let mut running = true;
     let mut recreate_swapchain = false;
@@ -261,6 +267,8 @@ impl HostilePlanetsClient {
           }
         }
       };
+
+      w.update_uniform_data(&data);
 
       recreate_swapchain = cube.render(&mut data, &mut cube_data, frame, recreate_swapchain);
     }

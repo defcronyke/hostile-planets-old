@@ -1,5 +1,6 @@
 use back;
 use back::Backend;
+use cgmath::Matrix4;
 use hal;
 use hal::pso::Viewport;
 use hal::window::Extent2D;
@@ -24,4 +25,10 @@ pub struct _WinitWindowData {
   pub desc_set: <Backend as hal::Backend>::DescriptorSet,
   pub desc_pool: <Backend as hal::Backend>::DescriptorPool,
   pub queue_group: QueueGroup<Backend, Graphics>,
+  pub uniform_buffer: <Backend as hal::Backend>::Buffer,
+  pub uniform_buffer_memory: <Backend as hal::Backend>::Memory,
+  pub model: Matrix4<f64>,
+  pub view: Matrix4<f64>,
+  pub proj: Matrix4<f64>,
+  pub clip: Matrix4<f64>,
 }

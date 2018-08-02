@@ -1,4 +1,6 @@
 use back;
+use back::Backend;
+use cgmath::{perspective, Deg, Matrix4, Point3, Vector3};
 use cube::Cube;
 use cube_data::_CubeData;
 use glsl_to_spirv;
@@ -8,10 +10,12 @@ use hal::pass::Subpass;
 use hal::pso::{PipelineStage, ShaderStageFlags, Specialization};
 use hal::window::Extent2D;
 use hal::{
-  adapter, format as f, image as i, pass, pool, pso, Backbuffer, DescriptorPool, Device, Instance,
-  PhysicalDevice, Primitive, Surface, SwapchainConfig,
+  adapter, buffer, format as f, image as i, memory as m, pass, pool, pso, Backbuffer,
+  DescriptorPool, Device, Instance, MemoryType, PhysicalDevice, Primitive, Surface,
+  SwapchainConfig,
 };
 use std;
+use std::borrow::Borrow;
 use std::fs;
 use std::io::Read;
 use vertex::Vertex;
@@ -29,6 +33,14 @@ const COLOR_RANGE: i::SubresourceRange = i::SubresourceRange {
 
 const ENTRY_NAME: &str = "main";
 
+#[derive(Copy, Clone)]
+struct UniformBufferObject {
+  model: Matrix4<f64>,
+  view: Matrix4<f64>,
+  proj: Matrix4<f64>,
+  clip: Matrix4<f64>,
+}
+
 #[cfg(any(feature = "vulkan", feature = "dx12", feature = "metal"))]
 type WindowType = winit::Window;
 #[cfg(feature = "gl")]
@@ -42,6 +54,8 @@ pub struct _WinitWindow {
   pub instance: back::Instance,
   pub adapters: Vec<adapter::Adapter<back::Backend>>,
   pub surface: <back::Backend as hal::Backend>::Surface,
+  pub width: u64,
+  pub height: u64,
 }
 
 #[cfg(feature = "gl")]
@@ -49,6 +63,8 @@ pub struct _WinitWindow {
   pub window: WindowType,
   pub adapters: Vec<adapter::Adapter<back::Backend>>,
   pub surface: <back::Backend as hal::Backend>::Surface,
+  pub width: u64,
+  pub height: u64,
 }
 
 impl Window for _WinitWindow {}
@@ -95,6 +111,8 @@ impl _WinitWindow {
       instance: instance,
       adapters: adapters,
       surface: surface,
+      width: w,
+      height: h,
     };
 
     #[cfg(feature = "gl")]
@@ -102,6 +120,8 @@ impl _WinitWindow {
       window: 0,
       adapters: adapters,
       surface: surface,
+      width: w,
+      height: h,
     };
   }
 
@@ -139,6 +159,13 @@ impl _WinitWindow {
           stage_flags: ShaderStageFlags::FRAGMENT,
           immutable_samplers: false,
         },
+        pso::DescriptorSetLayoutBinding {
+          binding: 2,
+          ty: pso::DescriptorType::UniformBuffer,
+          count: 1,
+          stage_flags: ShaderStageFlags::VERTEX,
+          immutable_samplers: false,
+        },
       ],
       &[],
     );
@@ -153,6 +180,10 @@ impl _WinitWindow {
         },
         pso::DescriptorRangeDesc {
           ty: pso::DescriptorType::Sampler,
+          count: 1,
+        },
+        pso::DescriptorRangeDesc {
+          ty: pso::DescriptorType::UniformBuffer,
           count: 1,
         },
       ],
@@ -203,6 +234,34 @@ impl _WinitWindow {
       depth: 0.0..1.0,
     };
 
+    // Create the view matrix for sending to GLSL.
+    let view = Matrix4::look_at(
+      Point3::new(-5.0, 3.0, -10.0),
+      Point3::new(0.0, 0.0, 0.0),
+      Vector3::new(0.0, -1.0, 0.0),
+    );
+
+    // Create the projection matrix for sending to GLSL.
+    let near = 0.1;
+    let far = 100.0;
+    let fov = Deg(45.0);
+    let proj = perspective(fov, self.width as f64 / self.height as f64, near, far);
+
+    let clip = Matrix4::new(
+      1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0,
+    );
+
+    let memory_types = adapter.physical_device.memory_properties().memory_types;
+
+    let (uniform_buffer, uniform_buffer_memory) = self.create_uniform_buffer(
+      &cube.model_matrix,
+      &view,
+      &proj,
+      &clip,
+      &device,
+      &memory_types,
+    );
+
     (
       _WinitWindowData {
         swap_chain: new_swap_chain,
@@ -220,6 +279,12 @@ impl _WinitWindow {
         desc_set,
         desc_pool,
         queue_group,
+        uniform_buffer,
+        uniform_buffer_memory,
+        model: cube.model_matrix,
+        view,
+        proj,
+        clip,
       },
       cube,
       cube_data,
@@ -288,6 +353,12 @@ impl _WinitWindow {
       desc_set: data.desc_set,
       desc_pool: data.desc_pool,
       queue_group: data.queue_group,
+      uniform_buffer: data.uniform_buffer,
+      uniform_buffer_memory: data.uniform_buffer_memory,
+      model: data.model,
+      view: data.view,
+      proj: data.proj,
+      clip: data.clip,
     }
   }
 
@@ -533,6 +604,143 @@ impl _WinitWindow {
       extent,
     )
   }
+
+  pub fn create_uniform_buffer(
+    &self,
+    model: &Matrix4<f64>,
+    view: &Matrix4<f64>,
+    proj: &Matrix4<f64>,
+    clip: &Matrix4<f64>,
+    device: &back::Device,
+    memory_types: &Vec<MemoryType>,
+  ) -> (
+    <Backend as hal::Backend>::Buffer,
+    <Backend as hal::Backend>::Memory,
+  ) {
+    // let buffer_stride = std::mem::size_of::<Matrix4<f64>>() as u64;
+    // let buffer_len = 1 * buffer_stride;
+    let buffer_size = std::mem::size_of::<UniformBufferObject>() as u64;
+
+    let buffer_unbound = device
+      .create_buffer(buffer_size, buffer::Usage::UNIFORM)
+      .unwrap();
+    let buffer_req = device.get_buffer_requirements(&buffer_unbound);
+
+    let upload_type = memory_types
+      .iter()
+      .enumerate()
+      .position(|(id, mem_type)| {
+        buffer_req.type_mask & (1 << id) != 0
+          && mem_type.properties.contains(m::Properties::CPU_VISIBLE)
+      })
+      .unwrap()
+      .into();
+
+    let buffer_memory = device
+      .allocate_memory(upload_type, buffer_req.size)
+      .unwrap();
+    let uniform_buffer = device
+      .bind_buffer_memory(&buffer_memory, 0, buffer_unbound)
+      .unwrap();
+
+    // TODO: check transitions: read/write mapping and vertex buffer read
+    {
+      let mut uniform = device
+        .acquire_mapping_writer::<UniformBufferObject>(&buffer_memory, 0..buffer_size)
+        .unwrap();
+      uniform.copy_from_slice(&[UniformBufferObject {
+        model: *model,
+        view: *view,
+        proj: *proj,
+        clip: *clip,
+      }]);
+      device.release_mapping_writer(uniform);
+    }
+
+    (uniform_buffer, buffer_memory)
+    // let model_uniform_buffer = self.create_model_uniform_buffer(model, device, memory_types);
+
+    // (model_uniform_buffer)
+  }
+
+  pub fn update_uniform_data(&self, data: &_WinitWindowData) {
+    let device = data.device.borrow();
+    // let stride = size_of::<T>() as u64;
+    // let upload_size = data_source.len() as u64 * stride;
+    let upload_size = std::mem::size_of::<UniformBufferObject>() as u64;
+
+    // assert!(offset + upload_size <= self.size);
+    {
+      let mut data_target = device
+        .acquire_mapping_writer::<UniformBufferObject>(
+          &data.uniform_buffer_memory,
+          0..upload_size,
+          // offset..self.size,
+        )
+        .unwrap();
+      data_target[0..1 as usize].copy_from_slice(&[UniformBufferObject {
+        model: data.model,
+        view: data.view,
+        proj: data.proj,
+        clip: data.clip,
+      }]);
+      device.release_mapping_writer(data_target);
+    }
+  }
+
+  // pub fn create_model_uniform_buffer(
+  //   &self,
+  //   model: &Matrix4<f64>,
+  //   device: &back::Device,
+  //   memory_types: &Vec<MemoryType>,
+  // ) -> <Backend as hal::Backend>::Buffer {
+  //   // let uniform_desc = DescSetLayout::new(
+  //   //   Rc::clone(&device),
+  //   //   vec![pso::DescriptorSetLayoutBinding {
+  //   //     binding: 0,
+  //   //     ty: pso::DescriptorType::UniformBuffer,
+  //   //     count: 1,
+  //   //     stage_flags: ShaderStageFlags::FRAGMENT,
+  //   //     immutable_samplers: false,
+  //   //   }],
+  //   // );
+
+  //   let buffer_stride = std::mem::size_of::<Matrix4<f64>>() as u64;
+  //   let buffer_len = 1 * buffer_stride;
+
+  //   let buffer_unbound = device
+  //     .create_buffer(buffer_len, buffer::Usage::UNIFORM)
+  //     .unwrap();
+  //   let buffer_req = device.get_buffer_requirements(&buffer_unbound);
+
+  //   let upload_type = memory_types
+  //     .iter()
+  //     .enumerate()
+  //     .position(|(id, mem_type)| {
+  //       buffer_req.type_mask & (1 << id) != 0
+  //         && mem_type.properties.contains(m::Properties::CPU_VISIBLE)
+  //     })
+  //     .unwrap()
+  //     .into();
+
+  //   let buffer_memory = device
+  //     .allocate_memory(upload_type, buffer_req.size)
+  //     .unwrap();
+  //   let uniform_buffer = device
+  //     .bind_buffer_memory(&buffer_memory, 0, buffer_unbound)
+  //     .unwrap();
+
+  //   // TODO: check transitions: read/write mapping and vertex buffer read
+  //   {
+  //     let mut uniform = device
+  //       .acquire_mapping_writer::<Matrix4<f64>>(&buffer_memory, 0..buffer_len)
+  //       .unwrap();
+  //     uniform.copy_from_slice(&[*model]);
+  //     device.release_mapping_writer(uniform);
+  //   }
+
+  //   uniform_buffer
+  // }
 
   pub fn cleanup(data: _WinitWindowData) {
     data
