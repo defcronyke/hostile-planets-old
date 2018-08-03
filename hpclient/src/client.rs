@@ -1,5 +1,4 @@
 use conf::ClientConf;
-use window::_WinitWindow;
 use object::Object;
 use asset_loader;
 use cpython::PyResult;
@@ -10,18 +9,10 @@ use std::net::TcpStream;
 use std::{thread, time};
 use toml;
 use std::sync::{Arc, RwLock};
-use hal::{FrameSync, Swapchain, MemoryType, Device, buffer, memory as m, PhysicalDevice};
-use winit;
 use env_logger;
-use hal;
-use cube::Cube;
-use cgmath::{Matrix4, Point3, Vector3, perspective, Deg};
-use std;
-use back;
-
-#[cfg(feature = "gl")]
-use back::glutin::GlContext;
-
+use window_state::WindowState;
+use renderer_state::RendererState;
+use backend::create_backend;
 
 #[cfg(feature = "vulkan")]
 py_module_initializer!(hpclient_vulkan, inithpclient_vulkan, PyInit_hpclient_vulkan, |py, m| {
@@ -194,7 +185,7 @@ impl HostilePlanetsClient {
 
   #[cfg(not(any(feature = "vulkan", feature = "dx12", feature = "metal", feature = "gl")))]
   pub fn run(&self) -> io::Result<()> {
-    let msg = "You need to enable the native API feature (vulkan/dx12/metal/gl) in order to test the LL";
+    let msg = "You need to enable the native API feature (vulkan/dx12/metal/gl) in order for this program to work.";
     println!("{}", msg);
     Err(io::Error::from(io::ErrorKind::Other))
   }
@@ -203,80 +194,88 @@ impl HostilePlanetsClient {
   pub fn run(&self) -> io::Result<()> {
     env_logger::init();
 
-    let mut events_loop = winit::EventsLoop::new();
-    let window_width = 800;
-    let window_height = 600;
+    let mut window = WindowState::new();
+    let (backend, _instance) = create_backend(&mut window);
 
-    let mut w = _WinitWindow::new("cube", window_width, window_height, &events_loop);
-    let (mut data, cube, mut cube_data) = w.init();
+    let mut renderer_state = RendererState::new(backend, window);
+    renderer_state.mainloop();
 
-    // // Create the view matrix for sending to GLSL.
-    // let view_matrix = Matrix4::look_at(Point3::new(0.0, 1.0, 0.0), Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
+    Ok(())
 
-    // // Create the projection matrix for sending to GLSL.
-    // let near = 0.1;
-    // let far = 100.0;
-    // let fov = Deg(45.0);
-    // let projection_matrix = perspective(fov, window_width as f64 / window_height as f64, near, far);
+    // let mut events_loop = EventsLoop::new();
+    // let w = 800;
+    // let h = 600;
 
-    // let memory_types = data.adapter.physical_device.memory_properties().memory_types;
+    // let mut window = WinitWindow::new("cube", w, h, &events_loop);
+    // // let (mut data, cube, mut cube_data) = window.init();
 
-    // let model_uniform_buffer = w.create_uniform_buffers(&cube.model_matrix, &view_matrix, &projection_matrix, &data.device, &memory_types);
+    // // // Create the view matrix for sending to GLSL.
+    // // let view_matrix = Matrix4::look_at(Point3::new(0.0, 1.0, 0.0), Point3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
 
-    let mut running = true;
-    let mut recreate_swapchain = false;
-    while running {
-      events_loop.poll_events(|event| {
-        if let winit::Event::WindowEvent { event, .. } = event {
-          #[allow(unused_variables)]
-          match event {
-            winit::WindowEvent::KeyboardInput {
-              input:
-                winit::KeyboardInput {
-                  virtual_keycode: Some(winit::VirtualKeyCode::Escape),
-                  ..
-                },
-              ..
-            }
-            | winit::WindowEvent::CloseRequested => running = false,
-            winit::WindowEvent::Resized(dims) => {
-              #[cfg(feature = "gl")]
-              w.surface
-                .get_window()
-                .resize(dims.to_physical(w.surface.get_window().get_hidpi_factor()));
-              recreate_swapchain = true;
-            }
-            _ => (),
-          }
-        }
-      });
+    // // // Create the projection matrix for sending to GLSL.
+    // // let near = 0.1;
+    // // let far = 100.0;
+    // // let fov = Deg(45.0);
+    // // let projection_matrix = perspective(fov, window_width as f64 / window_height as f64, near, far);
 
-      if recreate_swapchain {
-        data = _WinitWindow::recreate_swapchain(&w.window, &mut w.surface, data);
-        recreate_swapchain = false;
-      }
+    // // let memory_types = data.adapter.physical_device.memory_properties().memory_types;
 
-      data.device.reset_fence(&cube_data.frame_fence);
-      data.command_pool.reset();
-      let frame: hal::SwapImageIndex = {
-        match data.swap_chain.acquire_image(FrameSync::Semaphore(&mut cube_data.frame_semaphore)) {
-          Ok(i) => i,
-          Err(_) => {
-            recreate_swapchain = true;
-            continue;
-          }
-        }
-      };
+    // // let model_uniform_buffer = w.create_uniform_buffers(&cube.model_matrix, &view_matrix, &projection_matrix, &data.device, &memory_types);
 
-      w.update_uniform_data(&data);
+    // let mut running = true;
+    // let mut recreate_swapchain = false;
+    // while running {
+    //   events_loop.poll_events(|event| {
+    //     if let Event::WindowEvent { event, .. } = event {
+    //       #[allow(unused_variables)]
+    //       match event {
+    //         WindowEvent::KeyboardInput {
+    //           input:
+    //             KeyboardInput {
+    //               virtual_keycode: Some(VirtualKeyCode::Escape),
+    //               ..
+    //             },
+    //           ..
+    //         }
+    //         | WindowEvent::CloseRequested => running = false,
+    //         WindowEvent::Resized(dims) => {
+    //           #[cfg(feature = "gl")]
+    //           window.surface
+    //             .get_window()
+    //             .resize(dims.to_physical(window.surface.get_window().get_hidpi_factor()));
+    //           recreate_swapchain = true;
+    //         }
+    //         _ => (),
+    //       }
+    //     }
+    //   });
 
-      recreate_swapchain = cube.render(&mut data, &mut cube_data, frame, recreate_swapchain);
-    }
+    //   if recreate_swapchain {
+    //     // data = _WinitWindow::recreate_swapchain(&w.window, &mut w.surface, data);
+    //     recreate_swapchain = false;
+    //   }
+
+    //   // data.device.reset_fence(&cube_data.frame_fence);
+    //   // data.command_pool.reset();
+    //   // let frame: hal::SwapImageIndex = {
+    //   //   match data.swap_chain.acquire_image(FrameSync::Semaphore(&mut cube_data.frame_semaphore)) {
+    //   //     Ok(i) => i,
+    //   //     Err(_) => {
+    //   //       recreate_swapchain = true;
+    //   //       continue;
+    //   //     }
+    //   //   }
+    //   // };
+
+    //   // w.update_uniform_data(&data);
+
+    //   // recreate_swapchain = cube.render(&mut data, &mut cube_data, frame, recreate_swapchain);
+    // }
 
     // cleanup!
-    Cube::cleanup(&data.device, cube_data);
-    _WinitWindow::cleanup(data);
+    // Cube::cleanup(&data.device, cube_data);
+    // _WinitWindow::cleanup(data);
     
-    Ok(())
+    // Ok(())
   }
 }
