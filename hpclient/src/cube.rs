@@ -6,7 +6,7 @@ pub struct Cube {
   pub vertices: [Vertex; 24],
   pub indices: [u16; 36],
   pub texels: [[u8; 4]; 4],
-  pub model_matrix: Matrix4<f64>,
+  pub model_matrix: Matrix4<f32>,
 }
 
 impl Cube {

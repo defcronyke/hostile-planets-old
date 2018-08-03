@@ -75,6 +75,7 @@ pub mod renderer_state;
 pub mod surface_trait;
 pub mod swapchain_state;
 pub mod uniform;
+pub mod uniform_matrices_data;
 pub mod vertex;
 pub mod window_state;
 pub mod window_type;

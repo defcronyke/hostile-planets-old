@@ -1,8 +1,11 @@
 use backend_state::BackendState;
 use buffer_state::BufferState;
+use cgmath::{perspective, Deg, Matrix4, Point3, Vector3};
 use color::Color;
+use cube::Cube;
 use desc_set_layout::DescSetLayout;
 use device_state::DeviceState;
+use dims::DIMS;
 use framebuffer_state::FramebufferState;
 use hal;
 use hal::pso::{PipelineStage, ShaderStageFlags};
@@ -14,12 +17,14 @@ use image_state::ImageState;
 use pipeline_state::PipelineState;
 use quad::Quad;
 use render_pass_state::RenderPassState;
+// use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::io::Cursor;
 use std::rc::Rc;
 use surface_trait::SurfaceTrait;
 use swapchain_state::SwapchainState;
 use uniform::Uniform;
+use uniform_matrices_data::UniformMatricesData;
 use vertex::Vertex2D;
 use window_state::WindowState;
 use winit;
@@ -40,6 +45,7 @@ where
   pub vertex_buffer: BufferState<B>,
   pub render_pass: RenderPassState<B>,
   pub uniform: Uniform<B>,
+  pub uniform_matrices: Uniform<B>,
   pub pipeline: PipelineState<B>,
   pub framebuffer: FramebufferState<B>,
   pub viewport: pso::Viewport,
@@ -78,13 +84,22 @@ where
 
     let uniform_desc = DescSetLayout::new(
       Rc::clone(&device),
-      vec![pso::DescriptorSetLayoutBinding {
-        binding: 0,
-        ty: pso::DescriptorType::UniformBuffer,
-        count: 1,
-        stage_flags: ShaderStageFlags::FRAGMENT,
-        immutable_samplers: false,
-      }],
+      vec![
+        pso::DescriptorSetLayoutBinding {
+          binding: 0,
+          ty: pso::DescriptorType::UniformBuffer,
+          count: 1,
+          stage_flags: ShaderStageFlags::FRAGMENT,
+          immutable_samplers: false,
+        },
+        pso::DescriptorSetLayoutBinding {
+          binding: 1,
+          ty: pso::DescriptorType::UniformBuffer,
+          count: 1,
+          stage_flags: ShaderStageFlags::VERTEX,
+          immutable_samplers: false,
+        },
+      ],
     );
 
     let mut img_desc_pool = Some(device.borrow().device.create_descriptor_pool(
@@ -103,14 +118,20 @@ where
 
     let mut uniform_desc_pool = Some(device.borrow().device.create_descriptor_pool(
       1, // # of sets
-      &[pso::DescriptorRangeDesc {
-        ty: pso::DescriptorType::UniformBuffer,
-        count: 1,
-      }],
+      &[
+        pso::DescriptorRangeDesc {
+          ty: pso::DescriptorType::UniformBuffer,
+          count: 1,
+        },
+        pso::DescriptorRangeDesc {
+          ty: pso::DescriptorType::UniformBuffer,
+          count: 1,
+        },
+      ],
     ));
 
     let image_desc = image_desc.create_desc_set(img_desc_pool.as_mut().unwrap());
-    let uniform_desc = uniform_desc.create_desc_set(uniform_desc_pool.as_mut().unwrap());
+    let uniform_desc_built = uniform_desc.create_desc_set(uniform_desc_pool.as_mut().unwrap());
 
     println!("Memory types: {:?}", backend.adapter.memory_types);
 
@@ -144,9 +165,74 @@ where
     let uniform = Uniform::new(
       Rc::clone(&device),
       &backend.adapter.memory_types,
-      &[1f32, 1.0f32, 1.0f32, 1.0f32],
-      uniform_desc,
+      &[1.0f32, 1.0f32, 1.0f32, 1.0f32],
+      uniform_desc_built,
       0,
+    );
+
+    let cube = Cube::new();
+
+    // Model matrix
+    let model = cube.model_matrix;
+
+    // View matrix
+    let view: Matrix4<f32> = Matrix4::look_at(
+      Point3::new(0.0, 1.0, 10.0),
+      Point3::new(0.0, 0.0, 0.0),
+      Vector3::new(0.0, 1.0, 0.0),
+    );
+
+    // Projection matrix
+    let fovy = Deg(45.0);
+    let aspect = DIMS.width as f32 / DIMS.height as f32;
+    let near = 0.1;
+    let far = 100.0;
+    let proj = perspective(fovy, aspect, near, far);
+
+    let uniform_matrices_data = UniformMatricesData::new(model, view, proj);
+
+    let uniform_desc = DescSetLayout::new(
+      Rc::clone(&device),
+      vec![
+        pso::DescriptorSetLayoutBinding {
+          binding: 0,
+          ty: pso::DescriptorType::UniformBuffer,
+          count: 1,
+          stage_flags: ShaderStageFlags::FRAGMENT,
+          immutable_samplers: false,
+        },
+        pso::DescriptorSetLayoutBinding {
+          binding: 1,
+          ty: pso::DescriptorType::UniformBuffer,
+          count: 1,
+          stage_flags: ShaderStageFlags::VERTEX,
+          immutable_samplers: false,
+        },
+      ],
+    );
+
+    let mut uniform_desc_pool = Some(device.borrow().device.create_descriptor_pool(
+      1, // # of sets
+      &[
+        pso::DescriptorRangeDesc {
+          ty: pso::DescriptorType::UniformBuffer,
+          count: 1,
+        },
+        pso::DescriptorRangeDesc {
+          ty: pso::DescriptorType::UniformBuffer,
+          count: 1,
+        },
+      ],
+    ));
+
+    let uniform_desc_built = uniform_desc.create_desc_set(uniform_desc_pool.as_mut().unwrap());
+
+    let uniform_matrices = Uniform::new(
+      Rc::clone(&device),
+      &backend.adapter.memory_types,
+      &[uniform_matrices_data],
+      uniform_desc_built,
+      1,
     );
 
     image.wait_for_transfer_completion();
@@ -167,7 +253,11 @@ where
     );
 
     let pipeline = PipelineState::new(
-      vec![image.get_layout(), uniform.get_layout()],
+      vec![
+        image.get_layout(),
+        uniform.get_layout(),
+        uniform_matrices.get_layout(),
+      ],
       render_pass.render_pass.as_ref().unwrap(),
       Rc::clone(&device),
     );
@@ -181,8 +271,10 @@ where
       image,
       img_desc_pool,
       uniform_desc_pool,
+      // uniform_matrices_desc_pool,
       vertex_buffer,
       uniform,
+      uniform_matrices,
       render_pass,
       pipeline,
       swapchain,
@@ -211,7 +303,11 @@ where
     );
 
     self.pipeline = PipelineState::new(
-      vec![self.image.get_layout(), self.uniform.get_layout()],
+      vec![
+        self.image.get_layout(),
+        self.uniform.get_layout(),
+        self.uniform_matrices.get_layout(),
+      ],
       self.render_pass.render_pass.as_ref().unwrap(),
       Rc::clone(&self.device),
     );
@@ -259,6 +355,7 @@ where
     while running {
       {
         let uniform = &mut self.uniform;
+        // let uniform_matrices = &mut self.uniform_matrices;
         #[cfg(feature = "gl")]
         let backend = &self.backend;
 
@@ -423,6 +520,14 @@ where
           vec![
             self.image.desc.set.as_ref().unwrap(),
             self.uniform.desc.as_ref().unwrap().set.as_ref().unwrap(),
+            self
+              .uniform_matrices
+              .desc
+              .as_ref()
+              .unwrap()
+              .set
+              .as_ref()
+              .unwrap(),
           ],
           &[],
         ); //TODO
@@ -484,6 +589,11 @@ where
       .borrow()
       .device
       .destroy_descriptor_pool(self.uniform_desc_pool.take().unwrap());
+    // self
+    //   .device
+    //   .borrow()
+    //   .device
+    //   .destroy_descriptor_pool(self.uniform_matrices_desc_pool.take().unwrap());
     self.swapchain.take();
   }
 }
