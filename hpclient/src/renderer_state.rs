@@ -17,7 +17,6 @@ use image_state::ImageState;
 use pipeline_state::PipelineState;
 use quad::Quad;
 use render_pass_state::RenderPassState;
-// use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::io::Cursor;
 use std::rc::Rc;
@@ -37,6 +36,7 @@ where
   B::Surface: SurfaceTrait,
 {
   pub uniform_desc_pool: Option<B::DescriptorPool>,
+  pub uniform_matrices_desc_pool: Option<B::DescriptorPool>,
   pub img_desc_pool: Option<B::DescriptorPool>,
   pub swapchain: Option<SwapchainState<B>>,
   pub device: Rc<RefCell<DeviceState<B>>>,
@@ -84,22 +84,13 @@ where
 
     let uniform_desc = DescSetLayout::new(
       Rc::clone(&device),
-      vec![
-        pso::DescriptorSetLayoutBinding {
-          binding: 0,
-          ty: pso::DescriptorType::UniformBuffer,
-          count: 1,
-          stage_flags: ShaderStageFlags::FRAGMENT,
-          immutable_samplers: false,
-        },
-        pso::DescriptorSetLayoutBinding {
-          binding: 1,
-          ty: pso::DescriptorType::UniformBuffer,
-          count: 1,
-          stage_flags: ShaderStageFlags::VERTEX,
-          immutable_samplers: false,
-        },
-      ],
+      vec![pso::DescriptorSetLayoutBinding {
+        binding: 0,
+        ty: pso::DescriptorType::UniformBuffer,
+        count: 1,
+        stage_flags: ShaderStageFlags::FRAGMENT,
+        immutable_samplers: false,
+      }],
     );
 
     let mut img_desc_pool = Some(device.borrow().device.create_descriptor_pool(
@@ -118,16 +109,10 @@ where
 
     let mut uniform_desc_pool = Some(device.borrow().device.create_descriptor_pool(
       1, // # of sets
-      &[
-        pso::DescriptorRangeDesc {
-          ty: pso::DescriptorType::UniformBuffer,
-          count: 1,
-        },
-        pso::DescriptorRangeDesc {
-          ty: pso::DescriptorType::UniformBuffer,
-          count: 1,
-        },
-      ],
+      &[pso::DescriptorRangeDesc {
+        ty: pso::DescriptorType::UniformBuffer,
+        count: 1,
+      }],
     ));
 
     let image_desc = image_desc.create_desc_set(img_desc_pool.as_mut().unwrap());
@@ -191,47 +176,33 @@ where
 
     let uniform_matrices_data = UniformMatricesData::new(model, view, proj);
 
-    let uniform_desc = DescSetLayout::new(
+    let uniform_matrices_desc = DescSetLayout::new(
       Rc::clone(&device),
-      vec![
-        pso::DescriptorSetLayoutBinding {
-          binding: 0,
-          ty: pso::DescriptorType::UniformBuffer,
-          count: 1,
-          stage_flags: ShaderStageFlags::FRAGMENT,
-          immutable_samplers: false,
-        },
-        pso::DescriptorSetLayoutBinding {
-          binding: 1,
-          ty: pso::DescriptorType::UniformBuffer,
-          count: 1,
-          stage_flags: ShaderStageFlags::VERTEX,
-          immutable_samplers: false,
-        },
-      ],
+      vec![pso::DescriptorSetLayoutBinding {
+        binding: 1,
+        ty: pso::DescriptorType::UniformBuffer,
+        count: 1,
+        stage_flags: ShaderStageFlags::VERTEX,
+        immutable_samplers: false,
+      }],
     );
 
-    let mut uniform_desc_pool = Some(device.borrow().device.create_descriptor_pool(
+    let mut uniform_matrices_desc_pool = Some(device.borrow().device.create_descriptor_pool(
       1, // # of sets
-      &[
-        pso::DescriptorRangeDesc {
-          ty: pso::DescriptorType::UniformBuffer,
-          count: 1,
-        },
-        pso::DescriptorRangeDesc {
-          ty: pso::DescriptorType::UniformBuffer,
-          count: 1,
-        },
-      ],
+      &[pso::DescriptorRangeDesc {
+        ty: pso::DescriptorType::UniformBuffer,
+        count: 1,
+      }],
     ));
 
-    let uniform_desc_built = uniform_desc.create_desc_set(uniform_desc_pool.as_mut().unwrap());
+    let uniform_matrices_desc_built =
+      uniform_matrices_desc.create_desc_set(uniform_matrices_desc_pool.as_mut().unwrap());
 
     let uniform_matrices = Uniform::new(
       Rc::clone(&device),
       &backend.adapter.memory_types,
       &[uniform_matrices_data],
-      uniform_desc_built,
+      uniform_matrices_desc_built,
       1,
     );
 
@@ -271,7 +242,7 @@ where
       image,
       img_desc_pool,
       uniform_desc_pool,
-      // uniform_matrices_desc_pool,
+      uniform_matrices_desc_pool,
       vertex_buffer,
       uniform,
       uniform_matrices,
@@ -589,11 +560,11 @@ where
       .borrow()
       .device
       .destroy_descriptor_pool(self.uniform_desc_pool.take().unwrap());
-    // self
-    //   .device
-    //   .borrow()
-    //   .device
-    //   .destroy_descriptor_pool(self.uniform_matrices_desc_pool.take().unwrap());
+    self
+      .device
+      .borrow()
+      .device
+      .destroy_descriptor_pool(self.uniform_matrices_desc_pool.take().unwrap());
     self.swapchain.take();
   }
 }
