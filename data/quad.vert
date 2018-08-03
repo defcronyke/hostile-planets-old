@@ -6,7 +6,7 @@ layout(constant_id = 0) const float scale = 1.0f;
 layout(location = 0) in vec2 a_pos;
 layout(location = 1) in vec2 a_uv;
 
-layout(set = 2, binding = 1) uniform UniformBufferObject {
+layout(set = 2, binding = 0) uniform UniformBufferObject {
     mat4 model;
     mat4 view;
     mat4 proj;

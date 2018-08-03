@@ -179,7 +179,7 @@ where
     let uniform_matrices_desc = DescSetLayout::new(
       Rc::clone(&device),
       vec![pso::DescriptorSetLayoutBinding {
-        binding: 1,
+        binding: 0,
         ty: pso::DescriptorType::UniformBuffer,
         count: 1,
         stage_flags: ShaderStageFlags::VERTEX,
@@ -203,7 +203,7 @@ where
       &backend.adapter.memory_types,
       &[uniform_matrices_data],
       uniform_matrices_desc_built,
-      1,
+      0,
     );
 
     image.wait_for_transfer_completion();
