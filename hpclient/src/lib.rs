@@ -67,7 +67,6 @@ pub mod framebuffer_state;
 pub mod gltf_object;
 pub mod image_state;
 pub mod object;
-pub mod object_data;
 pub mod pipeline_state;
 pub mod quad;
 pub mod render_pass_state;

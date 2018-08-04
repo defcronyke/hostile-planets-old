@@ -2,7 +2,7 @@ use backend_state::BackendState;
 use buffer_state::BufferState;
 use cgmath::{perspective, Deg, Matrix4, Point3, Vector3};
 use color::Color;
-use cube::Cube;
+use cube::{Cube, CUBE_INDICES};
 use desc_set_layout::DescSetLayout;
 use device_state::DeviceState;
 use dims::DIMS;
@@ -19,7 +19,6 @@ use pipeline_state::PipelineState;
 use render_pass_state::RenderPassState;
 use std::cell::RefCell;
 use std::io::Cursor;
-// use std::mem::size_of;
 use std::rc::Rc;
 use surface_trait::SurfaceTrait;
 use swapchain_state::SwapchainState;
@@ -122,7 +121,7 @@ where
 
     println!("Memory types: {:?}", backend.adapter.memory_types);
 
-    const IMAGE_LOGO: &'static [u8] = include_bytes!("../../data/logo.png");
+    const IMAGE_LOGO: &'static [u8] = include_bytes!("../../data/images/logo-with-blue-bg.png");
     let img = image::load(Cursor::new(&IMAGE_LOGO[..]), image::PNG)
       .unwrap()
       .to_rgba();
@@ -500,6 +499,7 @@ where
 
         cmd_buffer.set_viewports(0, &[self.viewport.clone()]);
         cmd_buffer.set_scissors(0, &[self.viewport.rect]);
+        // cmd_buffer.set_depth_bounds(0.0..100.0);
         cmd_buffer.bind_graphics_pipeline(self.pipeline.pipeline.as_ref().unwrap());
         cmd_buffer.bind_vertex_buffers(0, Some((self.vertex_buffer.get_buffer(), 0)));
         cmd_buffer.bind_index_buffer(IndexBufferView {
@@ -535,13 +535,7 @@ where
             ]))],
           );
 
-          encoder.draw_indexed(0..36, 0, 0..1);
-          // encoder.draw_indexed(0..Cube::new().indices.len() as u32, 0, 0..1);
-          // encoder.draw_indexed(
-          //   0..((Cube::new().indices.len() as u32) * size_of::<Vertex>() as u32),
-          //   0,
-          //   0..1,
-          // );
+          encoder.draw_indexed(0..CUBE_INDICES.len() as u32, 0, 0..1);
           // encoder.draw(0..6, 0..1);
         }
 

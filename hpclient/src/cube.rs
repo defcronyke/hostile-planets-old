@@ -232,7 +232,7 @@ pub const CUBE_VERTICES: [Vertex; 24] = [
 //   },
 // ];
 
-const CUBE_INDICES: [u16; 36] = [
+pub const CUBE_INDICES: [u16; 36] = [
   0, 1, 2, 2, 3, 0, // top
   4, 5, 6, 6, 7, 4, // bottom
   8, 9, 10, 10, 11, 8, // right
@@ -241,7 +241,7 @@ const CUBE_INDICES: [u16; 36] = [
   20, 21, 22, 22, 23, 20, // back
 ];
 
-// const CUBE_INDICES: [u16; 36] = [
+// pub const CUBE_INDICES: [u16; 36] = [
 //   0, 1, 2, 2, 3, 0, // top
 //   4, 6, 5, 6, 4, 7, // bottom
 //   8, 9, 10, 10, 11, 8, // right
@@ -250,7 +250,7 @@ const CUBE_INDICES: [u16; 36] = [
 //   20, 21, 22, 22, 23, 20, // back
 // ];
 
-const CUBE_TEXELS: [[u8; 4]; 4] = [
+pub const CUBE_TEXELS: [[u8; 4]; 4] = [
   [0xff, 0xff, 0xff, 0x00],
   [0xff, 0x00, 0x00, 0x00],
   [0x00, 0xff, 0x00, 0x00],

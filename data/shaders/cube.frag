@@ -12,6 +12,6 @@ layout(set = 1, binding = 0) uniform UBOCol {
 } color_dat;
 
 void main() {
-    target0 = vec4(1.0, 0.0, 0.0, 1.0);
-    // target0 = texture(sampler2D(u_texture, u_sampler), v_uv) * color_dat.color;
+    target0 = texture(sampler2D(u_texture, u_sampler), v_uv) * color_dat.color;
+    // target0 = vec4(1.0, 0.0, 0.0, 1.0);
 }

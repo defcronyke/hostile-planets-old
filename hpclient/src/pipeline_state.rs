@@ -1,7 +1,7 @@
 use device_state::DeviceState;
 use glsl_to_spirv;
 use hal::pass::Subpass;
-use hal::pso::Specialization;
+use hal::pso::{Face, FrontFace, PolygonMode, Rasterizer, Specialization};
 use hal::{format as f, pso, Backend, Device, Primitive};
 use std;
 use std::cell::RefCell;
@@ -35,7 +35,7 @@ impl<B: Backend> PipelineState<B> {
 
     let pipeline = {
       let vs_module = {
-        let glsl = fs::read_to_string("data/quad.vert").unwrap();
+        let glsl = fs::read_to_string("data/shaders/cube.vert").unwrap();
         let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Vertex)
           .unwrap()
           .bytes()
@@ -44,7 +44,7 @@ impl<B: Backend> PipelineState<B> {
         device.create_shader_module(&spirv).unwrap()
       };
       let fs_module = {
-        let glsl = fs::read_to_string("data/quad.frag").unwrap();
+        let glsl = fs::read_to_string("data/shaders/cube.frag").unwrap();
         let spirv: Vec<u8> = glsl_to_spirv::compile(&glsl, glsl_to_spirv::ShaderType::Fragment)
           .unwrap()
           .bytes()
@@ -86,13 +86,24 @@ impl<B: Backend> PipelineState<B> {
         let mut pipeline_desc = pso::GraphicsPipelineDesc::new(
           shader_entries,
           Primitive::TriangleList,
-          pso::Rasterizer::FILL,
+          Rasterizer {
+            polygon_mode: PolygonMode::Fill,
+            cull_face: <Face>::BACK,
+            // cull_face: <Face>::NONE,
+            front_face: FrontFace::CounterClockwise,
+            // front_face: FrontFace::Clockwise,
+            depth_clamping: false,
+            depth_bias: None,
+            conservative: false,
+          },
+          // pso::Rasterizer::FILL,
           &pipeline_layout,
           subpass,
         );
         pipeline_desc.blender.targets.push(pso::ColorBlendDesc(
           pso::ColorMask::ALL,
           pso::BlendState::ALPHA,
+          // pso::BlendState::ADD,
         ));
         pipeline_desc.vertex_buffers.push(pso::VertexBufferDesc {
           binding: 0,
@@ -104,7 +115,8 @@ impl<B: Backend> PipelineState<B> {
           location: 0,
           binding: 0,
           element: pso::Element {
-            format: f::Format::Rg32Float,
+            format: f::Format::Rgb32Float, // 3D
+            // format: f::Format::Rg32Float,  // 2D
             offset: 0,
           },
         });
@@ -113,7 +125,7 @@ impl<B: Backend> PipelineState<B> {
           binding: 0,
           element: pso::Element {
             format: f::Format::Rg32Float,
-            offset: 8,
+            offset: 12, // 3D (8 for 2D)
           },
         });
 
