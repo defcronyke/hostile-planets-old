@@ -8,23 +8,24 @@ use device_state::DeviceState;
 use dims::DIMS;
 use framebuffer_state::FramebufferState;
 use hal;
+use hal::buffer::IndexBufferView;
 use hal::pso::{PipelineStage, ShaderStageFlags};
 use hal::queue::submission::Submission;
 use hal::window::FrameSync;
-use hal::{buffer, command, pool, pso, Backend, Device, Swapchain};
+use hal::{buffer, command, pool, pso, Backend, Device, IndexType, Swapchain};
 use image;
 use image_state::ImageState;
 use pipeline_state::PipelineState;
-use quad::Quad;
 use render_pass_state::RenderPassState;
 use std::cell::RefCell;
 use std::io::Cursor;
+// use std::mem::size_of;
 use std::rc::Rc;
 use surface_trait::SurfaceTrait;
 use swapchain_state::SwapchainState;
 use uniform::Uniform;
 use uniform_matrices_data::UniformMatricesData;
-use vertex::Vertex2D;
+use vertex::Vertex;
 use window_state::WindowState;
 use winit;
 
@@ -43,6 +44,7 @@ where
   pub backend: BackendState<B>,
   pub window: WindowState,
   pub vertex_buffer: BufferState<B>,
+  pub index_buffer: BufferState<B>,
   pub render_pass: RenderPassState<B>,
   pub uniform: Uniform<B>,
   pub uniform_matrices: Uniform<B>,
@@ -140,10 +142,19 @@ where
       &mut staging_pool,
     );
 
-    let vertex_buffer = BufferState::new::<Vertex2D>(
+    let cube = Cube::new();
+
+    let vertex_buffer = BufferState::new::<Vertex>(
       Rc::clone(&device),
-      &Quad::new().vertices,
+      &cube.vertices,
       buffer::Usage::VERTEX,
+      &backend.adapter.memory_types,
+    );
+
+    let index_buffer = BufferState::new::<u16>(
+      Rc::clone(&device),
+      &cube.indices,
+      buffer::Usage::INDEX,
       &backend.adapter.memory_types,
     );
 
@@ -155,14 +166,12 @@ where
       0,
     );
 
-    let cube = Cube::new();
-
     // Model matrix
     let model = cube.model_matrix;
 
     // View matrix
     let view: Matrix4<f32> = Matrix4::look_at(
-      Point3::new(0.0, 1.0, 10.0),
+      Point3::new(5.0, 5.0, 5.0),
       Point3::new(0.0, 0.0, 0.0),
       Vector3::new(0.0, 1.0, 0.0),
     );
@@ -173,6 +182,13 @@ where
     let near = 0.1;
     let far = 100.0;
     let proj = perspective(fovy, aspect, near, far);
+
+    // Vulkan clip matrix
+    let clip: Matrix4<f32> = Matrix4::new(
+      1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0,
+    );
+
+    let proj = clip * proj;
 
     let uniform_matrices_data = UniformMatricesData::new(model, view, proj);
 
@@ -244,6 +260,7 @@ where
       uniform_desc_pool,
       uniform_matrices_desc_pool,
       vertex_buffer,
+      index_buffer,
       uniform,
       uniform_matrices,
       render_pass,
@@ -485,6 +502,11 @@ where
         cmd_buffer.set_scissors(0, &[self.viewport.rect]);
         cmd_buffer.bind_graphics_pipeline(self.pipeline.pipeline.as_ref().unwrap());
         cmd_buffer.bind_vertex_buffers(0, Some((self.vertex_buffer.get_buffer(), 0)));
+        cmd_buffer.bind_index_buffer(IndexBufferView {
+          buffer: self.index_buffer.get_buffer(),
+          offset: 0,
+          index_type: IndexType::U16,
+        });
         cmd_buffer.bind_graphics_descriptor_sets(
           self.pipeline.pipeline_layout.as_ref().unwrap(),
           0,
@@ -512,7 +534,15 @@ where
               cr, cg, cb, 1.0,
             ]))],
           );
-          encoder.draw(0..6, 0..1);
+
+          encoder.draw_indexed(0..36, 0, 0..1);
+          // encoder.draw_indexed(0..Cube::new().indices.len() as u32, 0, 0..1);
+          // encoder.draw_indexed(
+          //   0..((Cube::new().indices.len() as u32) * size_of::<Vertex>() as u32),
+          //   0,
+          //   0..1,
+          // );
+          // encoder.draw(0..6, 0..1);
         }
 
         cmd_buffer.finish()

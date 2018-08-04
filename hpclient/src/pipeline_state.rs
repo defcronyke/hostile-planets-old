@@ -9,7 +9,7 @@ use std::fs;
 use std::io::Read;
 use std::mem::size_of;
 use std::rc::Rc;
-use vertex::Vertex2D;
+use vertex::Vertex;
 
 const ENTRY_NAME: &str = "main";
 
@@ -60,7 +60,7 @@ impl<B: Backend> PipelineState<B> {
             module: &vs_module,
             specialization: &[Specialization {
               id: 0,
-              value: pso::Constant::F32(0.8),
+              value: pso::Constant::F32(1.0),
             }],
           },
           pso::EntryPoint::<B> {
@@ -96,7 +96,7 @@ impl<B: Backend> PipelineState<B> {
         ));
         pipeline_desc.vertex_buffers.push(pso::VertexBufferDesc {
           binding: 0,
-          stride: size_of::<Vertex2D>() as u32,
+          stride: size_of::<Vertex>() as u32,
           rate: 0,
         });
 
